@@ -143,6 +143,13 @@ function tick(state) {
   timeDisplay.textContent = formatTime(remaining);
   updateArc(elapsed, state.phaseDuration, state.status);
   favicon.update(state);
+
+  // Progressive sleepiness in the final seconds of focus-warning.
+  // The SW state stays FOCUS_WARNING — this is purely a visual dragon transition.
+  if (state.status === STATUS.FOCUS_WARNING && dragon) {
+    const target = remaining <= 10_000 ? 'focus-sleeping' : 'focus-tired';
+    if (dragon.currentState !== target) dragon.setState(target);
+  }
 }
 
 // ── Arc update ────────────────────────────────────────────────────────────────

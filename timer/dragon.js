@@ -12,6 +12,7 @@ const STATES = [
   'idle',
   'focus',
   'focus-tired',
+  'focus-sleeping',
   'break-start',
   'break-active',
   'break-done',

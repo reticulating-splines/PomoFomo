@@ -1,4 +1,4 @@
-<svg class="dragon dragon--idle" viewBox="0 0 180 180"
+<svg class="dragon" viewBox="0 0 180 180"
      xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <!--
     PomoFomo Dragon — "Ember"
@@ -188,6 +188,23 @@
       <!-- Stars lower sides -->
       <path d="M 24 105 l 3 -8 3 8 -6 0 Z"   fill="#FF9BE8"/>
       <path d="M 158 100 l 3 -8 3 8 -6 0 Z"  fill="#FFD93D"/>
+    </g>
+
+    <!-- ── ZZZ (focus-sleeping — final 10 seconds) ──────────────────────── -->
+    <!-- Hidden by default; shown by CSS .dragon--focus-sleeping rule -->
+    <g class="dragon__zzz">
+      <g class="zzz-small">
+        <text x="118" y="72" font-size="9" fill="#9AA8D8" font-weight="bold"
+              font-family="sans-serif" text-anchor="middle">z</text>
+      </g>
+      <g class="zzz-medium">
+        <text x="126" y="57" font-size="12" fill="#7A88BC" font-weight="bold"
+              font-family="sans-serif" text-anchor="middle">z</text>
+      </g>
+      <g class="zzz-large">
+        <text x="133" y="41" font-size="15" fill="#5F6FA6" font-weight="bold"
+              font-family="sans-serif" text-anchor="middle">Z</text>
+      </g>
     </g>
 
   </g><!-- /.dragon__root -->

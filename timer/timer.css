@@ -545,11 +545,6 @@ body[data-paused="true"] .timer-stage::after {
   animation: wing-right-spread 650ms ease-out forwards;
 }
 
-.dragon--break-start .dragon__sparkles {
-  display: block !important;
-  animation: sparkle-burst 700ms ease-out forwards;
-}
-
 /* ── State: break-active ──────────────────────────────────────────────────── */
 @keyframes playful-bob {
   0%, 100% { transform: translateY(0) rotate(0deg); }
@@ -585,15 +580,6 @@ body[data-paused="true"] .timer-stage::after {
   animation: blink-slow 5s ease-in-out infinite;
 }
 
-.dragon--break-active .dragon__accessory--butterfly {
-  display: block !important;
-  animation: butterfly-flutter 3.5s ease-in-out infinite;
-}
-
-.dragon--break-active .dragon__accessory--book {
-  display: none;
-}
-
 /* ── State: break-done ────────────────────────────────────────────────────── */
 @keyframes ready-bounce {
   0%, 100%  { transform: translateY(0) scale(1); }
@@ -612,25 +598,68 @@ body[data-paused="true"] .timer-stage::after {
   animation: blink-normal 7s ease-in-out infinite;
 }
 
-/* ── Accessory visibility defaults ───────────────────────────────────────── */
-/* Book shown during focus states; butterfly shown during break states */
-.dragon__accessory--book {
+/* ── Accessory + sparkle + ZZZ visibility ────────────────────────────────── */
+/* Everything hidden by default — each state opts in explicitly.
+   This prevents the book flashing visible during the brief window
+   before the SW state is applied on load/reload. */
+.dragon__accessory--book,
+.dragon__accessory--butterfly,
+.dragon__sparkles,
+.dragon__zzz {
+  display: none;
+}
+
+/* Book: shown during all focus variants */
+.dragon--focus          .dragon__accessory--book,
+.dragon--focus-tired    .dragon__accessory--book,
+.dragon--focus-sleeping .dragon__accessory--book {
   display: block;
 }
 
-.dragon__accessory--butterfly {
-  display: none;
+/* Butterfly: shown during break-active */
+.dragon--break-active .dragon__accessory--butterfly {
+  display: block;
+  animation: butterfly-flutter 3.5s ease-in-out infinite;
 }
 
-/* Hide book during idle and break */
-.dragon--idle .dragon__accessory--book,
-.dragon--break-start .dragon__accessory--book,
-.dragon--break-active .dragon__accessory--book,
-.dragon--break-done .dragon__accessory--book {
-  display: none;
+/* Sparkles: shown during break-start celebration */
+.dragon--break-start .dragon__sparkles {
+  display: block;
+  animation: sparkle-burst 700ms ease-out forwards;
 }
 
-/* ── Sparkles hidden except break-start ──────────────────────────────────── */
-.dragon__sparkles {
-  display: none;
+/* ZZZ: shown during focus-sleeping (last 10 seconds) */
+.dragon--focus-sleeping .dragon__zzz {
+  display: block;
 }
+
+/* ── State: focus-sleeping (last 10 seconds of focus-warning) ────────────── */
+.dragon--focus-sleeping .dragon__root {
+  animation: tired-sway 5s ease-in-out infinite;
+}
+
+/* Eyes fully closed — override the eyelid blink animations */
+.dragon--focus-sleeping .dragon__eyelid-left,
+.dragon--focus-sleeping .dragon__eyelid-right {
+  animation: none;
+  transform: scaleY(1); /* lid fully down */
+}
+
+/* ZZZ float up and fade, staggered */
+@keyframes zzz-float {
+  0%   { opacity: 0; transform: translateY(0px);   }
+  15%  { opacity: 1;                               }
+  85%  { opacity: 0.8;                             }
+  100% { opacity: 0; transform: translateY(-20px); }
+}
+
+.zzz-small,
+.zzz-medium,
+.zzz-large {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+.dragon--focus-sleeping .zzz-small  { animation: zzz-float 2.2s ease-in-out 0s    infinite; }
+.dragon--focus-sleeping .zzz-medium { animation: zzz-float 2.2s ease-in-out 0.7s  infinite; }
+.dragon--focus-sleeping .zzz-large  { animation: zzz-float 2.2s ease-in-out 1.4s  infinite; }
