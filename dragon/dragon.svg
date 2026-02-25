@@ -1,0 +1,178 @@
+<svg class="dragon dragon--idle" viewBox="0 0 180 180"
+     xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <!--
+    PomoFomo Dragon — "Ember"
+    Named groups enable independent CSS animation of each body part.
+    dragon__root wraps everything so body-level animations (jump, bob) move all parts.
+  -->
+
+  <g class="dragon__root">
+
+    <!-- ── Tail (rendered first so it appears behind the body) ───────────── -->
+    <g class="dragon__tail">
+      <path d="M 126 116 C 144 108 161 116 159 130 C 157 140 144 142 136 132 C 130 125 128 119 126 116"
+            fill="#4A87C0"/>
+      <!-- Tail tip (leaf shape) -->
+      <path d="M 159 130 C 165 124 168 118 163 114 C 158 110 154 116 159 130"
+            fill="#3D7AAF"/>
+    </g>
+
+    <!-- ── Body ───────────────────────────────────────────────────────────── -->
+    <g class="dragon__body">
+      <ellipse cx="90" cy="118" rx="44" ry="38" fill="#5B9BD5"/>
+    </g>
+
+    <!-- ── Belly ──────────────────────────────────────────────────────────── -->
+    <ellipse class="dragon__belly" cx="90" cy="123" rx="26" ry="22" fill="#F9C784"/>
+    <!-- Belly scale highlights -->
+    <ellipse cx="84" cy="116" rx="7" ry="5" fill="#F0B866" opacity="0.45"/>
+    <ellipse cx="97" cy="125" rx="6" ry="4.5" fill="#F0B866" opacity="0.4"/>
+
+    <!-- ── Wings ──────────────────────────────────────────────────────────── -->
+    <g class="dragon__wings">
+      <!-- Left wing -->
+      <path class="dragon__wing-left"
+            d="M 57 96 C 36 83 20 54 38 37 C 49 27 64 43 65 59 C 66 70 60 85 57 96 Z"
+            fill="#4A87C0" opacity="0.88"/>
+      <!-- Wing membrane line (left) -->
+      <path d="M 57 96 C 44 72 36 50 38 37"
+            fill="none" stroke="#3D7AAF" stroke-width="1.2" opacity="0.5"/>
+
+      <!-- Right wing -->
+      <path class="dragon__wing-right"
+            d="M 123 96 C 144 83 160 54 142 37 C 131 27 116 43 115 59 C 114 70 120 85 123 96 Z"
+            fill="#4A87C0" opacity="0.88"/>
+      <!-- Wing membrane line (right) -->
+      <path d="M 123 96 C 136 72 144 50 142 37"
+            fill="none" stroke="#3D7AAF" stroke-width="1.2" opacity="0.5"/>
+    </g>
+
+    <!-- ── Head ───────────────────────────────────────────────────────────── -->
+    <g class="dragon__head">
+
+      <!-- Head shape (slightly squashed circle for chubby look) -->
+      <ellipse cx="90" cy="72" rx="33" ry="31" fill="#5B9BD5"/>
+
+      <!-- Snout -->
+      <ellipse cx="90" cy="86" rx="15" ry="10" fill="#4A87C0"/>
+
+      <!-- Nostrils -->
+      <ellipse cx="85" cy="85" rx="2.5" ry="1.8" fill="#3D7AAF"/>
+      <ellipse cx="95" cy="85" rx="2.5" ry="1.8" fill="#3D7AAF"/>
+
+      <!-- Head frills / crest (decorative orange spikes) -->
+      <polygon points="78,45 73,30 83,42" fill="#E87C45"/>
+      <polygon points="90,40 87,25 93,39" fill="#F09050"/>
+      <polygon points="102,45 107,30 97,42" fill="#E87C45"/>
+
+      <!-- ── Eyes ────────────────────────────────────────────────────────── -->
+      <g class="dragon__eyes">
+        <!-- Left eye white -->
+        <circle cx="77" cy="68" r="10.5" fill="white"/>
+        <!-- Left pupil -->
+        <circle class="dragon__pupil-left" cx="79" cy="69" r="6.5" fill="#1E1E2E"/>
+        <!-- Left eye shine (small highlight) -->
+        <circle cx="81" cy="66" r="2.2" fill="white" opacity="0.9"/>
+
+        <!-- Right eye white -->
+        <circle cx="103" cy="68" r="10.5" fill="white"/>
+        <!-- Right pupil -->
+        <circle class="dragon__pupil-right" cx="101" cy="69" r="6.5" fill="#1E1E2E"/>
+        <!-- Right eye shine -->
+        <circle cx="103" cy="66" r="2.2" fill="white" opacity="0.9"/>
+
+        <!-- Eyelids — scaleY(0) at rest; animated to scaleY(1) to blink.
+             Must use transform-box:fill-box + transform-origin:center top in CSS. -->
+        <circle class="dragon__eyelid-left"  cx="77"  cy="68" r="10.5" fill="#5B9BD5"/>
+        <circle class="dragon__eyelid-right" cx="103" cy="68" r="10.5" fill="#5B9BD5"/>
+      </g>
+
+      <!-- Smile -->
+      <path class="dragon__mouth"
+            d="M 83 92 Q 90 98 97 92"
+            fill="none" stroke="#3D7AAF" stroke-width="2.5" stroke-linecap="round"/>
+
+      <!-- Cheek blush (soft, endearing) -->
+      <ellipse cx="63" cy="76" rx="6.5" ry="4.5" fill="#FF8FA3" opacity="0.28"/>
+      <ellipse cx="117" cy="76" rx="6.5" ry="4.5" fill="#FF8FA3" opacity="0.28"/>
+
+    </g><!-- /.dragon__head -->
+
+    <!-- ── Legs ───────────────────────────────────────────────────────────── -->
+    <g class="dragon__limbs">
+      <!-- Left leg -->
+      <ellipse cx="68" cy="151" rx="13" ry="8" fill="#4A87C0"/>
+      <line x1="62" y1="155" x2="62" y2="158" stroke="#3D7AAF" stroke-width="2" stroke-linecap="round"/>
+      <line x1="68" y1="156" x2="68" y2="159" stroke="#3D7AAF" stroke-width="2" stroke-linecap="round"/>
+      <line x1="74" y1="155" x2="74" y2="158" stroke="#3D7AAF" stroke-width="2" stroke-linecap="round"/>
+
+      <!-- Right leg -->
+      <ellipse cx="112" cy="151" rx="13" ry="8" fill="#4A87C0"/>
+      <line x1="106" y1="155" x2="106" y2="158" stroke="#3D7AAF" stroke-width="2" stroke-linecap="round"/>
+      <line x1="112" y1="156" x2="112" y2="159" stroke="#3D7AAF" stroke-width="2" stroke-linecap="round"/>
+      <line x1="118" y1="155" x2="118" y2="158" stroke="#3D7AAF" stroke-width="2" stroke-linecap="round"/>
+    </g>
+
+    <!-- ── Book accessory (focus states) ─────────────────────────────────── -->
+    <g class="dragon__accessory dragon__accessory--book">
+      <!-- Book body (two halves) -->
+      <rect x="104" y="121" width="24" height="18" rx="2" fill="#E87C45"/>
+      <!-- Book spine -->
+      <rect x="115" y="121" width="2" height="18" fill="#C5622E"/>
+      <!-- Page lines (left half) -->
+      <line x1="107" y1="126" x2="114" y2="126" stroke="white" stroke-width="1.5"
+            stroke-linecap="round" opacity="0.75"/>
+      <line x1="107" y1="130" x2="114" y2="130" stroke="white" stroke-width="1.5"
+            stroke-linecap="round" opacity="0.75"/>
+      <line x1="107" y1="134" x2="114" y2="134" stroke="white" stroke-width="1.5"
+            stroke-linecap="round" opacity="0.75"/>
+    </g>
+
+    <!-- ── Butterfly accessory (break states) ────────────────────────────── -->
+    <!-- Hidden by default; shown by CSS .dragon--break-active rule -->
+    <g class="dragon__accessory dragon__accessory--butterfly">
+      <!-- Upper wings -->
+      <path d="M 120 56 C 128 44 140 46 138 57 C 136 64 128 63 120 56"
+            fill="#FF9BE8" opacity="0.88"/>
+      <path d="M 120 56 C 112 44 100 46 102 57 C 104 64 112 63 120 56"
+            fill="#C876D4" opacity="0.88"/>
+      <!-- Lower wings (smaller) -->
+      <path d="M 120 57 C 129 64 130 72 124 72 C 119 72 117 64 120 57"
+            fill="#C876D4" opacity="0.7"/>
+      <path d="M 120 57 C 111 64 110 72 116 72 C 121 72 123 64 120 57"
+            fill="#FF9BE8" opacity="0.7"/>
+      <!-- Body -->
+      <ellipse cx="120" cy="57" rx="2.5" ry="8" fill="#6B3A6B"/>
+      <!-- Antennae -->
+      <line x1="120" y1="49" x2="115" y2="42"
+            stroke="#6B3A6B" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="120" y1="49" x2="125" y2="42"
+            stroke="#6B3A6B" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="115" cy="41" r="2" fill="#6B3A6B"/>
+      <circle cx="125" cy="41" r="2" fill="#6B3A6B"/>
+    </g>
+
+    <!-- ── Sparkles (break-start celebration) ────────────────────────────── -->
+    <!-- Hidden by default; triggered by CSS .dragon--break-start rule -->
+    <g class="dragon__sparkles">
+      <!-- 4-point star upper left -->
+      <path d="M 42 50 l 4 -12 4 12 -8 0 Z" fill="#FFD93D"/>
+      <path d="M 38 54 l 12 0 -4 -12 Z"     fill="#FFBA00" opacity="0.55"/>
+
+      <!-- 4-point star upper right -->
+      <path d="M 142 38 l 3 -10 3 10 -6 0 Z" fill="#FFD93D"/>
+
+      <!-- Circles -->
+      <circle cx="28"  cy="80"  r="4.5" fill="#FFD93D"/>
+      <circle cx="154" cy="70"  r="4"   fill="#FF9BE8"/>
+      <circle cx="50"  cy="30"  r="3"   fill="#FF9BE8"/>
+      <circle cx="132" cy="26"  r="3"   fill="#FFD93D"/>
+      <circle cx="164" cy="50"  r="2.5" fill="#FF9BE8"/>
+
+      <!-- Stars lower sides -->
+      <path d="M 24 105 l 3 -8 3 8 -6 0 Z"   fill="#FF9BE8"/>
+      <path d="M 158 100 l 3 -8 3 8 -6 0 Z"  fill="#FFD93D"/>
+    </g>
+
+  </g><!-- /.dragon__root -->
+</svg>

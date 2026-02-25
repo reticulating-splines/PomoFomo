@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(FONT_DIR=~/Documents/Projects/PomoFomo/assets/fonts:*)",
+      "Bash(__NEW_LINE_6b9868cef837f18f__ curl -s \"https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDLshdTs3j6zbXWjgevT5.woff2\" -o \"$FONT_DIR/Nunito-Regular.woff2\")",
+      "Bash(__NEW_LINE_6b9868cef837f18f__ curl -s \"https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDFwmdTs3j6zbXWjgevT5.woff2\" -o \"$FONT_DIR/Nunito-Bold.woff2\")",
+      "Bash(__NEW_LINE_6b9868cef837f18f__ curl -s \"https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDDsmdTs3j6zbXWjgevT5.woff2\" -o \"$FONT_DIR/Nunito-ExtraBold.woff2\")",
+      "Bash(if [ $PIPESTATUS[0] -eq 0 ])",
+      "Bash(then)",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(open:*)"
+    ]
+  }
+}

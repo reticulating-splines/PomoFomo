@@ -1,0 +1,303 @@
+/**
+ * PomoFomo — Timer Tab (timer.js)
+ *
+ * Responsibilities:
+ *  - Request and receive state from the service worker
+ *  - Render the progress arc, time display, session dots, status label
+ *  - Wire button clicks to service worker messages
+ *  - Update the dragon state via DragonController
+ *  - Update the favicon via FaviconUpdater
+ *  - Play sounds via SoundPlayer (unlocked on first user gesture)
+ *
+ * This file does NOT make timing decisions — it displays what the SW tells it.
+ */
+
+import { MSG, STATUS } from '../shared/constants.js';
+import { FaviconUpdater } from '../favicon/favicon.js';
+import { SoundPlayer } from '../sounds/sounds.js';
+
+// ── Arc geometry (must match SVG viewBox in timer.html) ──────────────────────
+const ARC_RADIUS       = 96;
+const ARC_CIRCUMFERENCE = 2 * Math.PI * ARC_RADIUS; // ≈ 603.2
+
+// ── Element refs ─────────────────────────────────────────────────────────────
+const bodyEl          = document.body;
+const progressArc     = document.getElementById('progressArc');
+const timeDisplay     = document.getElementById('timeDisplay');
+const statusLabel     = document.getElementById('statusLabel');
+const sessionDots     = document.getElementById('sessionDots');
+const sessionLabelEl  = document.getElementById('sessionLabel');
+const btnSnooze       = document.getElementById('btnSnooze');
+const breakBanner     = document.getElementById('breakBanner');
+const breakBannerTitle   = document.getElementById('breakBannerTitle');
+const breakBannerSubtitle = document.getElementById('breakBannerSubtitle');
+const dragonContainer = document.getElementById('dragonContainer');
+const faviconLink     = document.getElementById('favicon');
+
+// ── Module instances ─────────────────────────────────────────────────────────
+const favicon  = new FaviconUpdater(faviconLink);
+const sounds   = new SoundPlayer();
+
+// DragonController is instantiated by dragon.js and exposed globally
+// We wait for it to be ready via a custom event.
+let dragon = null;
+window.addEventListener('dragonReady', (e) => {
+  dragon = e.detail.controller;
+  if (currentState) dragon.setState(statusToDragonState(currentState));
+});
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentState      = null;
+let tickInterval      = null;
+let soundsUnlocked    = false;
+let ambientIsPlaying  = false;
+
+// ── Arc setup ─────────────────────────────────────────────────────────────────
+progressArc.style.strokeDasharray  = ARC_CIRCUMFERENCE;
+progressArc.style.strokeDashoffset = ARC_CIRCUMFERENCE; // starts empty
+
+// ── Listen for state pushes from service worker ───────────────────────────────
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.type === MSG.STATE_UPDATE && msg.state) {
+    applyState(msg.state);
+    return;
+  }
+  if (msg.type === MSG.PLAY_CHIME) {
+    if (soundsUnlocked) sounds.playChime(msg.variant ?? 'warning');
+  }
+});
+
+// ── Request current state on load (with retry if SW not ready) ────────────────
+async function loadInitialState() {
+  let retries = 3;
+  while (retries-- > 0) {
+    try {
+      const state = await chrome.runtime.sendMessage({ type: MSG.GET_STATE });
+      if (state) { applyState(state); return; }
+    } catch (_e) {
+      // SW may still be waking up
+    }
+    await new Promise(r => setTimeout(r, 400));
+  }
+  // Fallback: show idle
+  applyState({ status: STATUS.IDLE, sessionNumber: 1, snoozeUsed: false });
+}
+
+loadInitialState();
+
+// ── Core render ───────────────────────────────────────────────────────────────
+function applyState(state) {
+  currentState = state;
+
+  // ── Body theme class ───────────────────────────────────────────────────────
+  bodyEl.dataset.status = state.status;
+  bodyEl.dataset.paused = state.isPaused ? 'true' : 'false';
+
+  // ── Dragon ─────────────────────────────────────────────────────────────────
+  if (dragon) dragon.setState(statusToDragonState(state));
+
+  // ── Session dots ───────────────────────────────────────────────────────────
+  renderSessionDots(state);
+
+  // ── Controls ───────────────────────────────────────────────────────────────
+  renderControls(state);
+
+  // ── Status label ───────────────────────────────────────────────────────────
+  statusLabel.textContent = getStatusLabel(state);
+
+  // ── Break banner ───────────────────────────────────────────────────────────
+  renderBreakBanner(state);
+
+  // ── Tick interval ──────────────────────────────────────────────────────────
+  clearInterval(tickInterval);
+  if (isActivePhase(state)) {
+    tick(state);
+    tickInterval = setInterval(() => tick(currentState), 1000);
+  } else {
+    // Show the phase's full duration as the default display
+    const defaultMs = state.phaseDuration ?? getDefaultDisplayMs(state.status);
+    timeDisplay.textContent = formatTime(defaultMs);
+    progressArc.style.strokeDashoffset = ARC_CIRCUMFERENCE;
+  }
+
+  favicon.update(state);
+
+  // ── Ambient sounds ─────────────────────────────────────────────────────────
+  const isBreakPhase = state.status === STATUS.BREAK || state.status === STATUS.LONG_BREAK;
+  if (isBreakPhase && soundsUnlocked && !ambientIsPlaying) {
+    sounds.startAmbient();
+    ambientIsPlaying = true;
+  } else if (!isBreakPhase && ambientIsPlaying) {
+    sounds.stopAmbient();
+    ambientIsPlaying = false;
+  }
+}
+
+// ── Tick (called every second) ────────────────────────────────────────────────
+function tick(state) {
+  if (!state || !state.startTime || !state.phaseDuration) return;
+
+  const elapsed   = Date.now() - state.startTime;
+  const remaining = Math.max(0, state.phaseDuration - elapsed);
+
+  timeDisplay.textContent = formatTime(remaining);
+  updateArc(elapsed, state.phaseDuration, state.status);
+  favicon.update(state);
+}
+
+// ── Arc update ────────────────────────────────────────────────────────────────
+function updateArc(elapsed, total, status) {
+  const isBreak = status === STATUS.BREAK || status === STATUS.LONG_BREAK;
+
+  // Focus: arc drains (shows time remaining, draining toward empty)
+  // Break:  arc fills (shows recharge progress, filling toward full)
+  let progress;
+  if (isBreak) {
+    progress = Math.min(1, elapsed / total);      // 0 → 1 (fills)
+  } else {
+    progress = Math.max(0, 1 - elapsed / total);  // 1 → 0 (drains)
+  }
+
+  progressArc.style.strokeDashoffset = ARC_CIRCUMFERENCE * (1 - progress);
+}
+
+// ── Session dots ──────────────────────────────────────────────────────────────
+async function renderSessionDots(state) {
+  // Get sessionsBeforeLongBreak from storage (don't block UI on this)
+  let total = 3;
+  try {
+    const result = await chrome.storage.sync.get('sessionsBeforeLongBreak');
+    total = result.sessionsBeforeLongBreak ?? 3;
+  } catch (_e) {}
+
+  sessionDots.innerHTML = '';
+  for (let i = 1; i <= total; i++) {
+    const dot = document.createElement('span');
+    dot.className = 'session-dot';
+    dot.setAttribute('aria-label', `Session ${i}`);
+
+    if (i < state.sessionNumber) {
+      dot.classList.add('done');
+    } else if (i === state.sessionNumber) {
+      dot.classList.add('current');
+    }
+    sessionDots.appendChild(dot);
+  }
+
+  const isBreak = state.status === STATUS.BREAK || state.status === STATUS.LONG_BREAK;
+  if (isBreak) {
+    sessionLabelEl.textContent = state.status === STATUS.LONG_BREAK
+      ? 'Long break' : 'Break time';
+  } else {
+    sessionLabelEl.textContent = state.sessionNumber === 1
+      ? 'Session 1'
+      : `Session ${state.sessionNumber}`;
+  }
+}
+
+// ── Controls ─────────────────────────────────────────────────────────────────
+// The timer tab is a pure display. Start / Stop live in the popup.
+// Only the snooze button lives here — it's time-critical and appears right
+// when the focus-warning fires and this tab is already in the foreground.
+function renderControls(state) {
+  const { status, snoozeUsed } = state;
+  btnSnooze.hidden = !(status === STATUS.FOCUS_WARNING && !snoozeUsed);
+}
+
+// ── Break banner ──────────────────────────────────────────────────────────────
+function renderBreakBanner(state) {
+  const isBreak = state.status === STATUS.BREAK || state.status === STATUS.LONG_BREAK;
+
+  if (isBreak) {
+    breakBanner.hidden = false;
+    if (state.status === STATUS.LONG_BREAK) {
+      breakBannerTitle.textContent = 'Long break time! 🐉✨';
+      breakBannerSubtitle.textContent = 'You finished a full cycle — Ember is so proud!';
+    } else {
+      breakBannerTitle.textContent = 'Break time! 🐉';
+      breakBannerSubtitle.textContent = 'Ember is celebrating — you\'ve earned this rest.';
+    }
+  } else {
+    breakBanner.hidden = true;
+  }
+}
+
+// ── Sound unlock ──────────────────────────────────────────────────────────────
+// Web Audio requires a user gesture before AudioContext can resume.
+// Unlock on any click in this tab — catches Snooze clicks plus general
+// tab interaction (clicking links in games, etc.)
+document.addEventListener('click', async () => {
+  if (!soundsUnlocked) {
+    await sounds.unlock();
+    soundsUnlocked = true;
+  }
+}, { passive: true });
+
+// ── Button wiring ─────────────────────────────────────────────────────────────
+
+// Snooze — 5 extra minutes, once per session, during focus-warning only
+btnSnooze.addEventListener('click', async () => {
+  const newState = await sendMsg(MSG.SNOOZE);
+  if (newState) applyState(newState);
+});
+
+// ── Message helper ────────────────────────────────────────────────────────────
+async function sendMsg(type, payload = {}) {
+  try {
+    return await chrome.runtime.sendMessage({ type, ...payload });
+  } catch (e) {
+    console.error('[PomoFomo Timer] sendMsg failed:', e);
+    return null;
+  }
+}
+
+// ── Dragon state mapping ──────────────────────────────────────────────────────
+function statusToDragonState(state) {
+  if (state.isPaused) return 'idle';
+
+  switch (state.status) {
+    case STATUS.IDLE:          return 'idle';
+    case STATUS.FOCUS:         return 'focus';
+    case STATUS.FOCUS_WARNING: return 'focus-tired';
+    case STATUS.BREAK:         return 'break-start';   // dragon.js auto-transitions to break-active
+    case STATUS.LONG_BREAK:    return 'break-start';
+    default:                   return 'idle';
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function isActivePhase(state) {
+  return (
+    state.startTime != null &&
+    state.phaseDuration != null &&
+    !state.isPaused &&
+    state.status !== STATUS.IDLE
+  );
+}
+
+function getDefaultDisplayMs(status) {
+  // Shown when idle — read from storage if possible, otherwise use defaults
+  chrome.storage.sync.get('focusMinutes').then(r => {
+    if (status === STATUS.IDLE) {
+      timeDisplay.textContent = formatTime((r.focusMinutes ?? 20) * 60 * 1000);
+    }
+  }).catch(() => {});
+  return 20 * 60 * 1000; // synchronous fallback
+}
+
+function formatTime(ms) {
+  const totalSec = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function getStatusLabel(state) {
+  if (state.isPaused)                           return 'Paused';
+  if (state.status === STATUS.IDLE)             return state.sessionNumber > 1 ? 'Ready for the next one?' : 'Ready to focus?';
+  if (state.status === STATUS.FOCUS)            return 'Focus time';
+  if (state.status === STATUS.FOCUS_WARNING)    return 'Almost there…';
+  if (state.status === STATUS.BREAK)            return 'Break time!';
+  if (state.status === STATUS.LONG_BREAK)       return 'Long break — great work!';
+  return '';
+}

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PomoFomo</title>
+  <link rel="stylesheet" href="timer.css">
+  <!-- Favicon is updated dynamically by timer.js -->
+  <link id="favicon" rel="icon" type="image/png" href="../assets/icons/icon32.png">
+</head>
+
+<!--
+  data-status drives all CSS theming — warm amber for focus, cool teal for break.
+  data-paused is used to show the paused visual treatment.
+-->
+<body data-status="idle" data-paused="false">
+
+  <div class="app-shell">
+
+    <!-- Session indicator: ●●○ dots + session label -->
+    <div class="session-track">
+      <div class="session-dots" id="sessionDots" role="img" aria-label="Session progress"></div>
+      <span class="session-label" id="sessionLabel">Session 1</span>
+    </div>
+
+    <!-- Central stage: circular progress arc + dragon -->
+    <div class="timer-stage" aria-hidden="true">
+      <svg class="progress-ring" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+        <!-- Track (faint background ring) -->
+        <circle
+          class="ring-track"
+          cx="110" cy="110" r="96"
+          fill="none"
+          stroke-width="8"
+        />
+        <!-- Active arc — stroke-dashoffset is animated by timer.js -->
+        <circle
+          class="ring-arc"
+          id="progressArc"
+          cx="110" cy="110" r="96"
+          fill="none"
+          stroke-width="8"
+          stroke-linecap="round"
+          transform="rotate(-90 110 110)"
+        />
+      </svg>
+
+      <!-- Dragon SVG is injected here by dragon.js -->
+      <div class="dragon-container" id="dragonContainer" aria-label="Ember the dragon"></div>
+    </div>
+
+    <!-- Time remaining — large display -->
+    <!-- NOTE: aria-live is intentionally NOT on this element (fires every second).
+         Screen reader announcements happen on statusLabel only. -->
+    <div class="time-display" id="timeDisplay">20:00</div>
+
+    <!-- Status label — announces state changes to screen readers -->
+    <p class="status-label" id="statusLabel" aria-live="polite" aria-atomic="true">
+      Ready to focus?
+    </p>
+
+    <!-- Controls:
+         The timer tab is a pure display — kids just watch Ember and the ring.
+         Start / Stop live in the popup (the "control panel").
+         Only the snooze button lives here because it's time-critical —
+         it appears right when the warning fires and the tab is in focus.
+    -->
+    <div class="controls" id="controls">
+      <!-- Snooze: shown during focus-warning only (once per session) -->
+      <button class="btn btn-snooze" id="btnSnooze" hidden aria-label="Snooze for 5 more minutes">
+        5 more minutes?
+      </button>
+    </div>
+
+  </div><!-- /.app-shell -->
+
+  <!-- Break overlay message — shown prominently during break -->
+  <div class="break-banner" id="breakBanner" hidden>
+    <div class="break-banner__inner">
+      <h1 class="break-banner__title" id="breakBannerTitle">Break time! 🐉</h1>
+      <p class="break-banner__subtitle" id="breakBannerSubtitle">
+        Ember is celebrating — you've earned this rest.
+      </p>
+    </div>
+  </div>
+
+  <script type="module" src="dragon.js"></script>
+  <script type="module" src="timer.js"></script>
+</body>
+</html>

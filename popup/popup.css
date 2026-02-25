@@ -1,0 +1,439 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   PomoFomo — Popup Stylesheet
+   Chrome enforces a minimum popup size. We use a fixed 300px width.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Fonts (must be declared in every HTML page that uses them) ────────────── */
+@font-face {
+  font-family: 'Nunito';
+  src: url('../assets/fonts/Nunito-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Nunito';
+  src: url('../assets/fonts/Nunito-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Nunito';
+  src: url('../assets/fonts/Nunito-ExtraBold.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: block;
+}
+
+/* ── Tokens ───────────────────────────────────────────────────────────────── */
+:root {
+  --color-bg:       #FFF8EE;
+  --color-surface:  #FFFDF7;
+  --color-border:   rgba(0, 0, 0, 0.07);
+  --color-accent:   #F5A623;
+  --color-text:     #3D2B1F;
+  --color-muted:    #A08060;
+  --color-btn-shadow: rgba(245, 166, 35, 0.30);
+  --radius-btn: 999px;
+}
+
+/* ── Reset ────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Nunito', system-ui, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  width: 300px;
+  height: 420px;      /* fixed height: Chrome popup sizes to body */
+  overflow: hidden;
+  position: relative; /* required: makes absolute-positioned views relative to body */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.popup-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px 11px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.brand {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--color-text);
+  flex: 1;
+  letter-spacing: -0.01em;
+}
+
+.mini-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--color-accent);
+  color: white;
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-right: 8px;
+  white-space: nowrap;
+  transition: background 500ms ease;
+  /* Hidden by default; shown via JS when in settings view */
+}
+
+.mini-badge:empty {
+  display: none;
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms, color 150ms;
+  flex-shrink: 0;
+}
+
+.icon-btn:hover {
+  background: rgba(0,0,0,0.05);
+  color: var(--color-accent);
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Active state for gear (when in settings view) */
+body[data-view="settings"] .icon-btn {
+  color: var(--color-accent);
+  background: rgba(245, 166, 35, 0.1);
+}
+
+/* ── Views — slide left/right transition ─────────────────────────────────── */
+.view {
+  position: absolute;
+  top: 53px; /* below header */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 16px 16px 20px;
+  transition:
+    transform 320ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 280ms ease;
+  overflow-y: auto;
+}
+
+/* Status view */
+body[data-view="status"] .view-status {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+body[data-view="status"] .view-settings {
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Settings view */
+body[data-view="settings"] .view-status {
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+body[data-view="settings"] .view-settings {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Status view ──────────────────────────────────────────────────────────── */
+.view-status {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.status-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.status-phase-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-icon {
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.status-info {
+  flex: 1;
+}
+
+.status-phase {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.status-time {
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.session-dots-mini {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.session-dot-mini {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.12);
+  transition: background 400ms;
+}
+
+.session-dot-mini.done    { background: var(--color-accent); }
+.session-dot-mini.current { background: rgba(245,166,35,0.45); border: 1.5px solid var(--color-accent); }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.btn {
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 0.92rem;
+  border-radius: var(--radius-btn);
+  border: none;
+  cursor: pointer;
+  padding: 11px 20px;
+  width: 100%;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+  text-align: center;
+}
+
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: var(--color-accent);
+  color: white;
+  box-shadow: 0 3px 14px var(--color-btn-shadow);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 5px 20px var(--color-btn-shadow);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-muted);
+  border: 2px solid currentColor;
+  padding: 9px 20px;
+}
+
+.btn-ghost:hover { color: var(--color-accent); }
+
+/* Stop button in the popup — legible for a parent, but clearly secondary */
+.btn-stop-popup {
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: transparent;
+  opacity: 0.55;
+  width: 100%;
+  padding: 6px;
+  border-radius: 4px;
+  text-align: center;
+  transition:
+    opacity 200ms ease,
+    color 200ms ease,
+    text-decoration-color 200ms ease;
+}
+
+.btn-stop-popup:hover {
+  opacity: 1;
+  color: var(--color-text);
+  text-decoration-color: currentColor;
+}
+
+.btn-stop-popup:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  opacity: 0.9;
+}
+
+.btn-stop-popup:active { transform: scale(0.97); }
+
+/* ── Settings view ────────────────────────────────────────────────────────── */
+.view-settings {
+  display: flex;
+  flex-direction: column;
+}
+
+#settingsForm {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.slider-row,
+.stepper-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+input[type="range"] {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(0,0,0,0.12);
+  border-radius: 99px;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  cursor: pointer;
+  transition: transform 120ms;
+}
+
+input[type="range"]:active::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+
+.slider-val {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text);
+  min-width: 44px;
+  text-align: right;
+}
+
+/* ── Toggle switch ────────────────────────────────────────────────────────── */
+.toggle-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-text);
+  user-select: none;
+}
+
+.toggle-track {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.toggle-track input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.toggle-thumb {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.15);
+  border-radius: 999px;
+  transition: background 250ms;
+  cursor: pointer;
+}
+
+.toggle-thumb::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.toggle-track input:checked + .toggle-thumb {
+  background: var(--color-accent);
+}
+
+.toggle-track input:checked + .toggle-thumb::after {
+  transform: translateX(18px);
+}
+
+.toggle-track input:focus-visible + .toggle-thumb {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ── Divider ──────────────────────────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 2px 0;
+}
