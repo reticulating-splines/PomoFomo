@@ -22,6 +22,7 @@ chrome.runtime.onInstalled.addListener(handleInstalled);
 chrome.runtime.onStartup.addListener(handleStartup);
 chrome.alarms.onAlarm.addListener(handleAlarm);
 chrome.tabs.onRemoved.addListener(handleTabRemoved);
+chrome.tabs.onUpdated.addListener(handleTabUpdated);
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   handleMessage(msg, sender)
@@ -531,6 +532,29 @@ async function handleTabRemoved(tabId) {
   // Recreate after a brief delay to avoid race with Chrome's tab cleanup
   setTimeout(() => ensureTimerTab(), 600);
   console.log('[PomoFomo] Timer tab was closed, recreating...');
+}
+
+// ── Tab Updated (push state when timer tab finishes loading) ─────────────────
+
+async function handleTabUpdated(tabId, changeInfo) {
+  // Only care about fully-loaded pages
+  if (changeInfo.status !== 'complete') return;
+
+  const state = await getState();
+  if (tabId !== state.timerTabId) return;
+
+  // Give timer.js ~400 ms to register its chrome.runtime.onMessage listener
+  // before we push the current state. Without this delay the message arrives
+  // before the listener is ready and the tab stays frozen on idle.
+  setTimeout(async () => {
+    try {
+      const freshState = await getState();
+      await broadcastToTimerTab({ type: MSG.STATE_UPDATE, state: freshState });
+      console.log('[PomoFomo] Pushed state to timer tab after load:', freshState.status);
+    } catch (_e) {
+      // Timer tab may have been closed again — ignore.
+    }
+  }, 400);
 }
 
 // ── Broadcast to Timer Tab ────────────────────────────────────────────────────

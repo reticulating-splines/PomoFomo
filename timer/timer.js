@@ -68,18 +68,23 @@ chrome.runtime.onMessage.addListener((msg) => {
 });
 
 // ── Request current state on load (with retry if SW not ready) ────────────────
+// The service worker and the timer tab both restart on extension reload.
+// GET_STATE is retried several times in case the SW is still waking up.
+// background.js also pushes state proactively via chrome.tabs.onUpdated,
+// so whichever arrives first wins — both call applyState(), which is idempotent.
 async function loadInitialState() {
-  let retries = 3;
+  let retries = 6;
   while (retries-- > 0) {
     try {
       const state = await chrome.runtime.sendMessage({ type: MSG.GET_STATE });
       if (state) { applyState(state); return; }
     } catch (_e) {
-      // SW may still be waking up
+      // SW may still be waking up — keep trying
     }
     await new Promise(r => setTimeout(r, 400));
   }
-  // Fallback: show idle
+  // Fallback: show idle — background.js push (via handleTabUpdated) may still
+  // arrive and correct this within the next second.
   applyState({ status: STATUS.IDLE, sessionNumber: 1, snoozeUsed: false });
 }
 
