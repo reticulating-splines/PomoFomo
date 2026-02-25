@@ -114,42 +114,67 @@
     </g>
 
     <!-- ── Book accessory (focus states) ─────────────────────────────────── -->
+    <!-- Ember holds an open book in front of their belly — clearly readable -->
     <g class="dragon__accessory dragon__accessory--book">
-      <!-- Book body (two halves) -->
-      <rect x="104" y="121" width="24" height="18" rx="2" fill="#E87C45"/>
-      <!-- Book spine -->
-      <rect x="115" y="121" width="2" height="18" fill="#C5622E"/>
-      <!-- Page lines (left half) -->
-      <line x1="107" y1="126" x2="114" y2="126" stroke="white" stroke-width="1.5"
-            stroke-linecap="round" opacity="0.75"/>
-      <line x1="107" y1="130" x2="114" y2="130" stroke="white" stroke-width="1.5"
-            stroke-linecap="round" opacity="0.75"/>
-      <line x1="107" y1="134" x2="114" y2="134" stroke="white" stroke-width="1.5"
-            stroke-linecap="round" opacity="0.75"/>
+      <!-- Book shadow (depth) -->
+      <rect x="63" y="127" width="54" height="34" rx="4" fill="#000" opacity="0.08"/>
+      <!-- Left page -->
+      <rect x="62" y="124" width="28" height="34" rx="3" fill="#FFF5E8"/>
+      <!-- Right page -->
+      <rect x="90" y="124" width="28" height="34" rx="3" fill="#FFF0DC"/>
+      <!-- Spine crease -->
+      <rect x="88" y="124" width="4" height="34" rx="1" fill="#C5622E"/>
+      <!-- Cover edges -->
+      <rect x="61" y="123" width="30" height="36" rx="3" fill="none"
+            stroke="#E87C45" stroke-width="2"/>
+      <rect x="89" y="123" width="30" height="36" rx="3" fill="none"
+            stroke="#E87C45" stroke-width="2"/>
+      <!-- Left page lines -->
+      <line x1="67" y1="132" x2="85" y2="132" stroke="#C5A882" stroke-width="1.5"
+            stroke-linecap="round" opacity="0.7"/>
+      <line x1="67" y1="138" x2="85" y2="138" stroke="#C5A882" stroke-width="1.5"
+            stroke-linecap="round" opacity="0.7"/>
+      <line x1="67" y1="144" x2="83" y2="144" stroke="#C5A882" stroke-width="1.5"
+            stroke-linecap="round" opacity="0.7"/>
+      <line x1="67" y1="150" x2="81" y2="150" stroke="#C5A882" stroke-width="1.5"
+            stroke-linecap="round" opacity="0.5"/>
+      <!-- Right page lines -->
+      <line x1="95" y1="132" x2="113" y2="132" stroke="#C5A882" stroke-width="1.5"
+            stroke-linecap="round" opacity="0.7"/>
+      <line x1="95" y1="138" x2="113" y2="138" stroke="#C5A882" stroke-width="1.5"
+            stroke-linecap="round" opacity="0.7"/>
+      <line x1="95" y1="144" x2="111" y2="144" stroke="#C5A882" stroke-width="1.5"
+            stroke-linecap="round" opacity="0.7"/>
+      <line x1="95" y1="150" x2="109" y2="150" stroke="#C5A882" stroke-width="1.5"
+            stroke-linecap="round" opacity="0.5"/>
     </g>
 
     <!-- ── Butterfly accessory (break states) ────────────────────────────── -->
+    <!-- Floating clearly above Ember's head so it reads immediately -->
     <!-- Hidden by default; shown by CSS .dragon--break-active rule -->
     <g class="dragon__accessory dragon__accessory--butterfly">
-      <!-- Upper wings -->
-      <path d="M 120 56 C 128 44 140 46 138 57 C 136 64 128 63 120 56"
-            fill="#FF9BE8" opacity="0.88"/>
-      <path d="M 120 56 C 112 44 100 46 102 57 C 104 64 112 63 120 56"
-            fill="#C876D4" opacity="0.88"/>
-      <!-- Lower wings (smaller) -->
-      <path d="M 120 57 C 129 64 130 72 124 72 C 119 72 117 64 120 57"
-            fill="#C876D4" opacity="0.7"/>
-      <path d="M 120 57 C 111 64 110 72 116 72 C 121 72 123 64 120 57"
-            fill="#FF9BE8" opacity="0.7"/>
+      <!-- Upper wings — large and bold -->
+      <path d="M 90 28 C 102 10 124 12 122 28 C 120 38 106 38 90 28"
+            fill="#FF9BE8" opacity="0.92"/>
+      <path d="M 90 28 C 78 10 56 12 58 28 C 60 38 74 38 90 28"
+            fill="#C876D4" opacity="0.92"/>
+      <!-- Lower wings -->
+      <path d="M 90 30 C 106 40 108 54 98 54 C 91 54 88 42 90 30"
+            fill="#C876D4" opacity="0.78"/>
+      <path d="M 90 30 C 74 40 72 54 82 54 C 89 54 92 42 90 30"
+            fill="#FF9BE8" opacity="0.78"/>
+      <!-- Wing detail spots -->
+      <circle cx="108" cy="22" r="4" fill="#FFD6F5" opacity="0.6"/>
+      <circle cx="72"  cy="22" r="4" fill="#E5B0F0" opacity="0.6"/>
       <!-- Body -->
-      <ellipse cx="120" cy="57" rx="2.5" ry="8" fill="#6B3A6B"/>
+      <ellipse cx="90" cy="32" rx="3" ry="10" fill="#6B3A6B"/>
       <!-- Antennae -->
-      <line x1="120" y1="49" x2="115" y2="42"
-            stroke="#6B3A6B" stroke-width="1.5" stroke-linecap="round"/>
-      <line x1="120" y1="49" x2="125" y2="42"
-            stroke="#6B3A6B" stroke-width="1.5" stroke-linecap="round"/>
-      <circle cx="115" cy="41" r="2" fill="#6B3A6B"/>
-      <circle cx="125" cy="41" r="2" fill="#6B3A6B"/>
+      <line x1="90" y1="22" x2="83" y2="12"
+            stroke="#6B3A6B" stroke-width="1.8" stroke-linecap="round"/>
+      <line x1="90" y1="22" x2="97" y2="12"
+            stroke="#6B3A6B" stroke-width="1.8" stroke-linecap="round"/>
+      <circle cx="83" cy="11" r="2.5" fill="#FF9BE8"/>
+      <circle cx="97" cy="11" r="2.5" fill="#FF9BE8"/>
     </g>
 
     <!-- ── Sparkles (break-start celebration) ────────────────────────────── -->
