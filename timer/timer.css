@@ -663,3 +663,160 @@ body[data-paused="true"] .timer-stage::after {
 .dragon--focus-sleeping .zzz-small  { animation: zzz-float 2.2s ease-in-out 0s    infinite; }
 .dragon--focus-sleeping .zzz-medium { animation: zzz-float 2.2s ease-in-out 0.7s  infinite; }
 .dragon--focus-sleeping .zzz-large  { animation: zzz-float 2.2s ease-in-out 1.4s  infinite; }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   BOOK CHARACTER
+   The book SVG root has class="book"; state classes are toggled by book.js.
+   JS-driven elements: #book__bookmark (transform) and #book__page-edge (width/x).
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Container — mirrors .dragon-container ───────────────────────────────── */
+.book-container {
+  position: absolute;
+  inset: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.book-container svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* ── Default visibility ───────────────────────────────────────────────────── */
+/* Closed book shown by default; open book, ZZZ, and shelf hidden */
+.book .book__open    { display: none; }
+.book .book__closed  { display: block; }
+.book .book__zzz     { display: none; }
+.book #book__shelf   { display: none; }
+
+/* Page-edge and bookmark are inside .book__open so they're hidden with it.
+   But they live outside .book__open in the SVG (at book__root level) so they
+   stay on top of pages. Hide them explicitly when not in focus states. */
+.book #book__page-edge { display: none; }
+.book #book__bookmark  { display: none; }
+
+/* Session books 2-4 hidden by default — JS shows by sessionNumber */
+.shelf-book--2,
+.shelf-book--3,
+.shelf-book--4 { display: none; }
+
+/* ── Focus states: open book visible ─────────────────────────────────────── */
+.book--focus          .book__open,
+.book--focus-tired    .book__open,
+.book--focus-sleeping .book__open {
+  display: block;
+}
+.book--focus          .book__closed,
+.book--focus-tired    .book__closed,
+.book--focus-sleeping .book__closed {
+  display: none;
+}
+.book--focus          #book__page-edge,
+.book--focus-tired    #book__page-edge,
+.book--focus-sleeping #book__page-edge {
+  display: block;
+}
+.book--focus          #book__bookmark,
+.book--focus-tired    #book__bookmark,
+.book--focus-sleeping #book__bookmark {
+  display: block;
+}
+
+/* ZZZ: only during focus-sleeping */
+.book--focus-sleeping .book__zzz { display: block; }
+
+/* ── Break states: shelf scene (book__root hidden) ───────────────────────── */
+.book--break-active .book__root,
+.book--break-done   .book__root {
+  display: none;
+}
+.book--break-active #book__shelf,
+.book--break-done   #book__shelf {
+  display: block;
+}
+
+/* ── State: idle — closed book gentle bob ────────────────────────────────── */
+.book--idle .book__root {
+  animation: breathe 4.5s ease-in-out infinite;
+}
+
+/* ── State: focus — open book, slow page turn ────────────────────────────── */
+/* Page turn: left page scaleX-flips to simulate pages turning.
+   transform-origin: right center pivots at the spine edge. */
+@keyframes page-turn-slow {
+  0%,  58% { transform: scaleX(1); }
+  72%       { transform: scaleX(0); }
+  73%       { transform: scaleX(0); }
+  87%, 100% { transform: scaleX(1); }
+}
+
+.book--focus .book__root {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.book--focus .book__page-left {
+  transform-origin: right center;
+  transform-box: fill-box;
+  animation: page-turn-slow 6s ease-in-out infinite;
+}
+
+/* ── State: focus-tired — faster page turn + tired-sway on root ──────────── */
+@keyframes page-turn-fast {
+  0%,  38% { transform: scaleX(1); }
+  50%       { transform: scaleX(0); }
+  62%, 100% { transform: scaleX(1); }
+}
+
+.book--focus-tired .book__root {
+  animation: tired-sway 4s ease-in-out infinite;
+}
+
+.book--focus-tired .book__page-left {
+  transform-origin: right center;
+  transform-box: fill-box;
+  animation: page-turn-fast 3.5s ease-in-out infinite;
+}
+
+/* ── State: focus-sleeping — pages barely move + ZZZ floats ──────────────── */
+/* Reuses zzz-float keyframe defined in the dragon section above */
+.book--focus-sleeping .book__root {
+  animation: tired-sway 5s ease-in-out infinite;
+}
+
+.book--focus-sleeping .book__page-left {
+  transform-origin: right center;
+  transform-box: fill-box;
+  animation: page-turn-slow 12s ease-in-out infinite;
+}
+
+/* Reuse existing zzz-small/medium/large transform-box rules from dragon section */
+.book--focus-sleeping .zzz-small  { animation: zzz-float 2.2s ease-in-out 0s    infinite; }
+.book--focus-sleeping .zzz-medium { animation: zzz-float 2.2s ease-in-out 0.7s  infinite; }
+.book--focus-sleeping .zzz-large  { animation: zzz-float 2.2s ease-in-out 1.4s  infinite; }
+
+/* ── State: break-start — book flies upward off screen ───────────────────── */
+@keyframes book-fly-out {
+  0%   { transform: translateY(0)    rotate(0deg);   opacity: 1; }
+  25%  { transform: translateY(-18px) rotate(-5deg); opacity: 1; }
+  100% { transform: translateY(-220px) rotate(15deg); opacity: 0; }
+}
+
+.book--break-start .book__root {
+  animation: book-fly-out 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* ── State: break-active — sparkle pulses above shelf ────────────────────── */
+@keyframes sparkle-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.85); }
+  50%       { opacity: 1;   transform: scale(1.18); }
+}
+
+.book--break-active .book__sparkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sparkle-pulse 2s ease-in-out infinite;
+}

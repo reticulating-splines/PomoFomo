@@ -31,19 +31,24 @@ const btnSnooze       = document.getElementById('btnSnooze');
 const breakBanner     = document.getElementById('breakBanner');
 const breakBannerTitle   = document.getElementById('breakBannerTitle');
 const breakBannerSubtitle = document.getElementById('breakBannerSubtitle');
-const dragonContainer = document.getElementById('dragonContainer');
 const faviconLink     = document.getElementById('favicon');
 
 // ── Module instances ─────────────────────────────────────────────────────────
 const favicon  = new FaviconUpdater(faviconLink);
 const sounds   = new SoundPlayer();
 
-// DragonController is instantiated by dragon.js and exposed globally
-// We wait for it to be ready via a custom event.
-let dragon = null;
+// The active character controller — either DragonController or BookController.
+// Whichever script fires its ready event first (only one will fire, based on setting).
+let character = null;
+
 window.addEventListener('dragonReady', (e) => {
-  dragon = e.detail.controller;
-  if (currentState) dragon.setState(statusToDragonState(currentState));
+  character = e.detail.controller;
+  if (currentState) character.setState(statusToCharacterState(currentState));
+});
+
+window.addEventListener('bookReady', (e) => {
+  character = e.detail.controller;
+  if (currentState) character.setState(statusToCharacterState(currentState));
 });
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -51,6 +56,11 @@ let currentState      = null;
 let tickInterval      = null;
 let soundsUnlocked    = false;
 let ambientIsPlaying  = false;
+
+// ── Nag mode ──────────────────────────────────────────────────────────────────
+let nagInterval  = null;
+let myTabId      = null;
+let myWindowId   = null;
 
 // ── Arc setup ─────────────────────────────────────────────────────────────────
 progressArc.style.strokeDasharray  = ARC_CIRCUMFERENCE;
@@ -90,6 +100,27 @@ async function loadInitialState() {
 
 loadInitialState();
 
+// ── Resolve tab identity for nag mode ────────────────────────────────────────
+chrome.tabs.getCurrent().then(tab => {
+  if (tab) { myTabId = tab.id; myWindowId = tab.windowId; }
+}).catch(() => {});
+
+// ── Hide inactive character container ────────────────────────────────────────
+// Both dragon.js and book.js are always loaded (as modules), but only one
+// instantiates based on the timerCharacter setting. Hide the other container
+// so it doesn't occupy space or cause layout issues.
+chrome.storage.sync.get('timerCharacter').then(r => {
+  const active = r.timerCharacter ?? 'dragon';
+  const dragonEl = document.getElementById('dragonContainer');
+  const bookEl   = document.getElementById('bookContainer');
+  if (dragonEl) dragonEl.hidden = (active !== 'dragon');
+  if (bookEl)   bookEl.hidden   = (active !== 'book');
+}).catch(() => {
+  // Fallback: show dragon (the default)
+  const bookEl = document.getElementById('bookContainer');
+  if (bookEl) bookEl.hidden = true;
+});
+
 // ── Core render ───────────────────────────────────────────────────────────────
 function applyState(state) {
   currentState = state;
@@ -98,8 +129,8 @@ function applyState(state) {
   bodyEl.dataset.status = state.status;
   bodyEl.dataset.paused = state.isPaused ? 'true' : 'false';
 
-  // ── Dragon ─────────────────────────────────────────────────────────────────
-  if (dragon) dragon.setState(statusToDragonState(state));
+  // ── Character (dragon or book) ─────────────────────────────────────────────
+  if (character) character.setState(statusToCharacterState(state));
 
   // ── Session dots ───────────────────────────────────────────────────────────
   renderSessionDots(state);
@@ -136,6 +167,17 @@ function applyState(state) {
     sounds.stopAmbient();
     ambientIsPlaying = false;
   }
+
+  // ── Nag mode ────────────────────────────────────────────────────────────────
+  // During break phases, optionally re-grab focus every 20 seconds.
+  // Uses setInterval in the timer tab (chrome.alarms minimum is 1 min).
+  if (isBreakPhase) {
+    chrome.storage.sync.get('nagDuringBreak').then(r => {
+      r.nagDuringBreak ? startNag() : stopNag();
+    }).catch(() => stopNag());
+  } else {
+    stopNag();
+  }
 }
 
 // ── Tick (called every second) ────────────────────────────────────────────────
@@ -150,10 +192,16 @@ function tick(state) {
   favicon.update(state);
 
   // Progressive sleepiness in the final seconds of focus-warning.
-  // The SW state stays FOCUS_WARNING — this is purely a visual dragon transition.
-  if (state.status === STATUS.FOCUS_WARNING && dragon) {
+  // The SW state stays FOCUS_WARNING — this is purely a visual character transition.
+  if (state.status === STATUS.FOCUS_WARNING && character) {
     const target = remaining <= 10_000 ? 'focus-sleeping' : 'focus-tired';
-    if (dragon.currentState !== target) dragon.setState(target);
+    if (character.currentState !== target) character.setState(target);
+  }
+
+  // Drive book progress (bookmark position + page-edge width).
+  // The dragon controller ignores setProgress (it doesn't have the method).
+  if (character && typeof character.setProgress === 'function') {
+    character.setProgress(Math.min(1, elapsed / state.phaseDuration), state);
   }
 }
 
@@ -263,17 +311,38 @@ async function sendMsg(type, payload = {}) {
   }
 }
 
-// ── Dragon state mapping ──────────────────────────────────────────────────────
-function statusToDragonState(state) {
+// ── Character state mapping ───────────────────────────────────────────────────
+// Used for both DragonController and BookController — both use the same vocabulary.
+function statusToCharacterState(state) {
   if (state.isPaused) return 'idle';
 
   switch (state.status) {
     case STATUS.IDLE:          return 'idle';
     case STATUS.FOCUS:         return 'focus';
     case STATUS.FOCUS_WARNING: return 'focus-tired';
-    case STATUS.BREAK:         return 'break-start';   // dragon.js auto-transitions to break-active
+    case STATUS.BREAK:         return 'break-start';   // auto-transitions to break-active
     case STATUS.LONG_BREAK:    return 'break-start';
     default:                   return 'idle';
+  }
+}
+
+// ── Nag mode helpers ──────────────────────────────────────────────────────────
+
+function startNag() {
+  if (nagInterval) return; // already running
+  nagInterval = setInterval(() => {
+    if (!myTabId) return;
+    chrome.tabs.update(myTabId, { active: true }).catch(() => {});
+    if (myWindowId) {
+      chrome.windows.update(myWindowId, { focused: true }).catch(() => {});
+    }
+  }, 20_000);
+}
+
+function stopNag() {
+  if (nagInterval) {
+    clearInterval(nagInterval);
+    nagInterval = null;
   }
 }
 

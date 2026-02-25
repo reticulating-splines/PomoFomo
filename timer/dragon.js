@@ -100,14 +100,18 @@ class DragonController {
   }
 }
 
-// ── Auto-initialize on the timer page ────────────────────────────────────────
-// dragon.js is loaded as a module in timer.html before timer.js,
-// so the controller is created and the SVG fetch starts immediately.
+// ── Conditional auto-initialize ───────────────────────────────────────────────
+// Only create the controller if timerCharacter === 'dragon' (the default).
+// book.js does the same check for 'book'.
+// timer.js hides the inactive container on load.
 
 const container = document.getElementById('dragonContainer');
 if (container) {
-  // Instantiated here; timer.js receives the instance via the 'dragonReady' event
-  new DragonController(container);
+  const { timerCharacter } = await chrome.storage.sync.get('timerCharacter');
+  if ((timerCharacter ?? 'dragon') === 'dragon') {
+    // Instantiated here; timer.js receives the instance via the 'dragonReady' event
+    new DragonController(container);
+  }
 } else {
   console.warn('[PomoFomo Dragon] #dragonContainer not found.');
 }

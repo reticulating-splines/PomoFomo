@@ -437,3 +437,56 @@ input[type="range"]:active::-webkit-slider-thumb {
   background: var(--color-border);
   margin: 2px 0;
 }
+
+/* ── Character selector ──────────────────────────────────────────────────── */
+.character-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.character-option {
+  flex: 1;
+  cursor: pointer;
+}
+
+.character-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.character-btn {
+  display: block;
+  text-align: center;
+  padding: 8px 10px;
+  border: 2px solid var(--color-border);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  transition: border-color 200ms ease, color 200ms ease, background 200ms ease;
+  user-select: none;
+}
+
+.character-option input:checked + .character-btn {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+  background: rgba(245, 166, 35, 0.08);
+}
+
+.character-option input:focus-visible + .character-btn {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ── Field hint (small note under a field) ───────────────────────────────── */
+.field-hint {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  opacity: 0.75;
+}
+

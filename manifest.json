@@ -32,6 +32,7 @@
     {
       "resources": [
         "timer/timer.html",
+        "timer/book.svg",
         "dragon/dragon.svg",
         "assets/fonts/Nunito-Regular.woff2",
         "assets/fonts/Nunito-Bold.woff2",

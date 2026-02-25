@@ -126,6 +126,34 @@
         </div>
       </label>
 
+      <div class="divider"></div>
+
+      <div class="field">
+        <label>Timer character</label>
+        <div class="character-row" role="group" aria-label="Choose timer character">
+          <label class="character-option" for="sCharDragon">
+            <input type="radio" id="sCharDragon" name="timerCharacter" value="dragon"
+                   aria-label="Ember the dragon">
+            <span class="character-btn">🐉 Dragon</span>
+          </label>
+          <label class="character-option" for="sCharBook">
+            <input type="radio" id="sCharBook" name="timerCharacter" value="book"
+                   aria-label="Animated book">
+            <span class="character-btn">📖 Book</span>
+          </label>
+        </div>
+        <p class="field-hint">Takes effect after reloading the extension.</p>
+      </div>
+
+      <label class="toggle-label" for="sNag">
+        <span>Nag during break</span>
+        <div class="toggle-track">
+          <input type="checkbox" id="sNag" role="switch"
+                 aria-label="Refocus this tab every 20 seconds during breaks">
+          <div class="toggle-thumb"></div>
+        </div>
+      </label>
+
     </form>
 
   </section>

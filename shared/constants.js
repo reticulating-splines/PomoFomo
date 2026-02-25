@@ -38,6 +38,8 @@ export const DEFAULT_SETTINGS = {
   sessionsBeforeLongBreak: 3,
   soundEnabled:            true,
   persistOnRelaunch:       false,
+  nagDuringBreak:          false,   // tab re-grabs focus every 20s during break
+  timerCharacter:          'dragon', // 'dragon' | 'book'
 };
 
 // ── Default runtime state (chrome.storage.local) ──────────────────────────────

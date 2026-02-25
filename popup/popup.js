@@ -21,15 +21,18 @@ const btnStop        = document.getElementById('btnStop');
 const settingsForm   = document.getElementById('settingsForm');
 
 // Settings inputs
-const sFocusMin  = document.getElementById('sFocusMin');
-const sShortMin  = document.getElementById('sShortMin');
-const sLongMin   = document.getElementById('sLongMin');
-const sSessions  = document.getElementById('sSessions');
-const sSound     = document.getElementById('sSound');
-const sPersist   = document.getElementById('sPersist');
-const sFocusVal  = document.getElementById('sFocusVal');
-const sShortVal  = document.getElementById('sShortVal');
-const sLongVal   = document.getElementById('sLongVal');
+const sFocusMin    = document.getElementById('sFocusMin');
+const sShortMin    = document.getElementById('sShortMin');
+const sLongMin     = document.getElementById('sLongMin');
+const sSessions    = document.getElementById('sSessions');
+const sSound       = document.getElementById('sSound');
+const sPersist     = document.getElementById('sPersist');
+const sNag         = document.getElementById('sNag');
+const sCharDragon  = document.getElementById('sCharDragon');
+const sCharBook    = document.getElementById('sCharBook');
+const sFocusVal    = document.getElementById('sFocusVal');
+const sShortVal    = document.getElementById('sShortVal');
+const sLongVal     = document.getElementById('sLongVal');
 const sSessionsVal = document.getElementById('sSessionsVal');
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -119,12 +122,17 @@ function renderDots(state) {
 
 // ── Settings view ─────────────────────────────────────────────────────────────
 function populateSettings(settings) {
-  sFocusMin.value = settings.focusMinutes;
-  sShortMin.value = settings.shortBreakMinutes;
-  sLongMin.value  = settings.longBreakMinutes;
-  sSessions.value = settings.sessionsBeforeLongBreak;
-  sSound.checked  = settings.soundEnabled;
+  sFocusMin.value  = settings.focusMinutes;
+  sShortMin.value  = settings.shortBreakMinutes;
+  sLongMin.value   = settings.longBreakMinutes;
+  sSessions.value  = settings.sessionsBeforeLongBreak;
+  sSound.checked   = settings.soundEnabled;
   sPersist.checked = settings.persistOnRelaunch;
+  sNag.checked     = settings.nagDuringBreak ?? false;
+
+  const char = settings.timerCharacter ?? 'dragon';
+  sCharDragon.checked = (char === 'dragon');
+  sCharBook.checked   = (char === 'book');
 
   updateSliderLabels();
 }
@@ -157,6 +165,8 @@ function collectSettings() {
     sessionsBeforeLongBreak: Number(sSessions.value),
     soundEnabled:            sSound.checked,
     persistOnRelaunch:       sPersist.checked,
+    nagDuringBreak:          sNag.checked,
+    timerCharacter:          sCharBook.checked ? 'book' : 'dragon',
   };
 }
 

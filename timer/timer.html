@@ -47,6 +47,9 @@
 
       <!-- Dragon SVG is injected here by dragon.js -->
       <div class="dragon-container" id="dragonContainer" aria-label="Ember the dragon"></div>
+
+      <!-- Book SVG is injected here by book.js (hidden when dragon is active) -->
+      <div class="book-container" id="bookContainer" aria-label="An animated book"></div>
     </div>
 
     <!-- Time remaining — large display -->
@@ -85,6 +88,7 @@
   </div>
 
   <script type="module" src="dragon.js"></script>
+  <script type="module" src="book.js"></script>
   <script type="module" src="timer.js"></script>
 </body>
 </html>
