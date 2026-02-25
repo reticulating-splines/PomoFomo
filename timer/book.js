@@ -5,9 +5,12 @@
  * #bookContainer, and manages CSS state classes on the SVG root element.
  *
  * Additional capability over the dragon: setProgress(ratio, state) drives
- * JS-animated elements — the bookmark ribbon moves rightward as the focus
- * session progresses, the right-page-edge stack shrinks, and the bookshelf
- * shows the correct number of completed-session books during break-active.
+ * the JS-animated page stacks:
+ *   #book__stack-left  — read pages, grows leftward  (right edge anchored at x=22)
+ *   #book__stack-right — unread pages, shrinks inward (left edge anchored at x=158)
+ * Both stacks go from width=2 (minimum) to width=20 (maximum).
+ *
+ * During break-active the bookshelf shows one book per completed session.
  *
  * Dispatches 'bookReady' on window when the SVG is loaded and ready.
  */
@@ -22,16 +25,17 @@ const STATES = [
   'break-done',
 ];
 
-// ── Progress constants ────────────────────────────────────────────────────────
-// Bookmark: the <g id="book__bookmark"> starts at translate(0,0).
-// A translate(dx,0) moves the ribbon from x≈103 (near spine) to x≈142 (right edge).
-const BOOKMARK_DX_MAX  = 39;   // SVG units of travel (0 → 39)
+// ── Stack geometry constants ──────────────────────────────────────────────────
+// Both stacks span width 2 (empty/full side) → 20 (full/empty side).
+const STACK_W_MIN    = 2;    // min width in SVG units (nearly finished side)
+const STACK_W_MAX    = 20;   // max width (full side)
+const STACK_W_RANGE  = STACK_W_MAX - STACK_W_MIN;  // 18
 
-// Page-edge stack: right edge anchored at x=156.
-// width starts at 6 (full) and shrinks to 1 (almost done).
-const EDGE_WIDTH_START = 6;
-const EDGE_WIDTH_END   = 1;
-const EDGE_ANCHOR_X    = 156;  // right edge stays fixed
+// Left stack: right edge anchored at x=22. x = 22 − width.
+const LEFT_STACK_RIGHT_EDGE = 22;
+
+// Right stack: left edge fixed at x=158. x stays constant.
+// (Changing width alone is enough — SVG rects grow to the right from x.)
 
 // ── BookController class ──────────────────────────────────────────────────────
 
@@ -42,8 +46,8 @@ class BookController {
   #pendingState = null;       // State to apply once SVG loads
 
   // JS-driven SVG elements (cached after load)
-  #bookmarkEl  = null;        // <g id="book__bookmark">
-  #pageEdgeEl  = null;        // <rect id="book__page-edge">
+  #leftStackEl  = null;       // <rect id="book__stack-left">
+  #rightStackEl = null;       // <rect id="book__stack-right">
 
   constructor(containerEl) {
     this.#container = containerEl;
@@ -82,22 +86,26 @@ class BookController {
     if (!this.#svgEl) return;
 
     const r = Math.min(1, Math.max(0, ratio));
-
-    // ── Bookmark position ───────────────────────────────────────────────────
-    // Only move during focus states — not during break
     const isFocus = ['focus', 'focus-tired', 'focus-sleeping'].includes(this.#current);
-    if (isFocus && this.#bookmarkEl) {
-      const dx = (BOOKMARK_DX_MAX * r).toFixed(2);
-      this.#bookmarkEl.setAttribute('transform', `translate(${dx}, 0)`);
-    }
 
-    // ── Right page-edge width ───────────────────────────────────────────────
-    // Shrinks as pages are "read"; right edge stays anchored
-    if (isFocus && this.#pageEdgeEl) {
-      const w = (EDGE_WIDTH_START - (EDGE_WIDTH_START - EDGE_WIDTH_END) * r).toFixed(2);
-      const x = (EDGE_ANCHOR_X - parseFloat(w)).toFixed(2);
-      this.#pageEdgeEl.setAttribute('width', w);
-      this.#pageEdgeEl.setAttribute('x', x);
+    if (isFocus) {
+      // ── Left stack: read pages — grows leftward as ratio increases ─────────
+      // Right edge is anchored at LEFT_STACK_RIGHT_EDGE (x=22).
+      // width goes from STACK_W_MIN (ratio=0) to STACK_W_MAX (ratio=1).
+      const leftW = (STACK_W_MIN + STACK_W_RANGE * r).toFixed(1);
+      const leftX = (LEFT_STACK_RIGHT_EDGE - parseFloat(leftW)).toFixed(1);
+      if (this.#leftStackEl) {
+        this.#leftStackEl.setAttribute('width', leftW);
+        this.#leftStackEl.setAttribute('x', leftX);
+      }
+
+      // ── Right stack: unread pages — shrinks inward as ratio increases ──────
+      // Left edge stays fixed at x=158 (the rect's x attribute never changes).
+      // width goes from STACK_W_MAX (ratio=0) to STACK_W_MIN (ratio=1).
+      const rightW = (STACK_W_MIN + STACK_W_RANGE * (1 - r)).toFixed(1);
+      if (this.#rightStackEl) {
+        this.#rightStackEl.setAttribute('width', rightW);
+      }
     }
 
     // ── Shelf book visibility ───────────────────────────────────────────────
@@ -125,9 +133,9 @@ class BookController {
       this.#container.innerHTML = svgText;
       this.#svgEl = this.#container.querySelector('svg');
 
-      // Cache the JS-driven elements
-      this.#bookmarkEl = this.#svgEl.querySelector('#book__bookmark');
-      this.#pageEdgeEl = this.#svgEl.querySelector('#book__page-edge');
+      // Cache the JS-driven stack elements
+      this.#leftStackEl  = this.#svgEl.querySelector('#book__stack-left');
+      this.#rightStackEl = this.#svgEl.querySelector('#book__stack-right');
 
       // Apply any state that arrived before SVG was ready
       const initialState = this.#pendingState ?? 'idle';

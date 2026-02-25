@@ -1,133 +1,159 @@
 <svg class="book" viewBox="0 0 180 180"
      xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <!--
-    PomoFomo — Book character "Page"
+    PomoFomo — Book character "Page" (oblique view)
+
+    The book is viewed from slightly above and to the right, like looking
+    at an open book lying on a desk. The spine is the center ridge.
+
+    Progress is shown by the page STACKS:
+      Left stack  (#book__stack-left)  — read pages, grows   leftward  (thin→thick)
+      Right stack (#book__stack-right) — unread pages, shrinks inward  (thick→thin)
+    Both stacks are JS-driven via setProgress(ratio).
+
+    A page-flip element (.book__page-turn) animates from the right stack
+    over the spine and onto the left stack periodically (CSS only).
 
     Groups:
-      book__root          body-level animations (bob, fly-out)
-        book__closed      closed-book form: cover + spine + page-edge (idle)
-        book__open        open-book form: two pages, spine, JS-driven elements
-          book__page-left   left (read) page — CSS page-turn animation pivots right center
-          book__page-right  right (unread) page — static
-          book__spine       center spine strip
-        #book__page-edge  right-edge page stack; JS: width 6→1, x = 156−width
-        #book__bookmark   ribbon + V-notch; JS: transform="translate(dx,0)" dx 0→39
-        book__zzz         floating ZZZ text — focus-sleeping state
-
-      #book__shelf        OUTSIDE book__root so fly-out doesn't take the shelf
-        shelf-book--1/2/3/4  session books; CSS hides 2-4, JS shows by sessionNumber
-        book__sparkle     star above shelf
+      book__root        body-level animations (bob, fly-out)
+        book__closed    closed-book cover (idle state)
+        book__open      two open-page faces + spine + page-turn + lines
+        book__zzz       floating ZZZ (focus-sleeping)
+      #book__stack-left  JS-driven left stack rect  (inside book__root)
+      #book__stack-right JS-driven right stack rect (inside book__root)
+      #book__shelf       OUTSIDE book__root — doesn't fly away
   -->
+
+  <defs>
+    <!-- Striped gradient: horizontal bands suggest individual page edges -->
+    <linearGradient id="pageStackGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#F2EDE0"/>
+      <stop offset="9%"   stop-color="#E6DFCE"/>
+      <stop offset="10%"  stop-color="#F2EDE0"/>
+      <stop offset="19%"  stop-color="#E6DFCE"/>
+      <stop offset="20%"  stop-color="#F2EDE0"/>
+      <stop offset="29%"  stop-color="#E6DFCE"/>
+      <stop offset="30%"  stop-color="#F2EDE0"/>
+      <stop offset="39%"  stop-color="#E6DFCE"/>
+      <stop offset="40%"  stop-color="#F2EDE0"/>
+      <stop offset="49%"  stop-color="#E6DFCE"/>
+      <stop offset="50%"  stop-color="#F2EDE0"/>
+      <stop offset="59%"  stop-color="#E6DFCE"/>
+      <stop offset="60%"  stop-color="#F2EDE0"/>
+      <stop offset="69%"  stop-color="#E6DFCE"/>
+      <stop offset="70%"  stop-color="#F2EDE0"/>
+      <stop offset="79%"  stop-color="#E6DFCE"/>
+      <stop offset="80%"  stop-color="#F2EDE0"/>
+      <stop offset="89%"  stop-color="#E6DFCE"/>
+      <stop offset="90%"  stop-color="#F2EDE0"/>
+      <stop offset="100%" stop-color="#E6DFCE"/>
+    </linearGradient>
+  </defs>
 
   <g class="book__root">
 
     <!-- ════════════════════════════════════════════════════════════
-         CLOSED BOOK  (idle state)
+         CLOSED BOOK  (idle)
+         Oblique view: cover tilts slightly, spine and page-edge visible
          ════════════════════════════════════════════════════════════ -->
     <g class="book__closed">
-      <!-- Drop shadow -->
-      <ellipse cx="93" cy="152" rx="44" ry="5" fill="rgba(0,0,0,0.10)"/>
-      <!-- Back cover (slightly offset for depth) -->
-      <rect x="56" y="59" width="66" height="90" rx="5" fill="#9A3E14"/>
-      <!-- Page stack visible on right edge -->
-      <rect x="116" y="63" width="7" height="82" rx="2" fill="#F5EFDD"/>
-      <!-- Page stack lines for realism -->
-      <line x1="116" y1="70" x2="123" y2="70" stroke="#DDD0B5" stroke-width="0.8" opacity="0.6"/>
-      <line x1="116" y1="78" x2="123" y2="78" stroke="#DDD0B5" stroke-width="0.8" opacity="0.5"/>
-      <line x1="116" y1="86" x2="123" y2="86" stroke="#DDD0B5" stroke-width="0.8" opacity="0.5"/>
-      <line x1="116" y1="94" x2="123" y2="94" stroke="#DDD0B5" stroke-width="0.8" opacity="0.4"/>
-      <line x1="116" y1="102" x2="123" y2="102" stroke="#DDD0B5" stroke-width="0.8" opacity="0.4"/>
-      <line x1="116" y1="110" x2="123" y2="110" stroke="#DDD0B5" stroke-width="0.8" opacity="0.4"/>
-      <line x1="116" y1="118" x2="123" y2="118" stroke="#DDD0B5" stroke-width="0.8" opacity="0.4"/>
-      <line x1="116" y1="126" x2="123" y2="126" stroke="#DDD0B5" stroke-width="0.8" opacity="0.3"/>
-      <line x1="116" y1="134" x2="123" y2="134" stroke="#DDD0B5" stroke-width="0.8" opacity="0.3"/>
+      <ellipse cx="90" cy="150" rx="52" ry="6" fill="rgba(0,0,0,0.09)"/>
+
+      <!-- Page block — right edge (all pages stacked, unread + read) -->
+      <polygon points="158,60  165,64  165,148  158,148" fill="url(#pageStackGrad)"/>
+      <!-- Page block top face (slight 3D) -->
+      <polygon points="30,60  158,60  165,64  36,64" fill="#EDE8DC"/>
+
+      <!-- Back cover (offset for depth) -->
+      <polygon points="30,62  158,62  158,148  30,148" fill="#7A2E08"/>
       <!-- Front cover -->
-      <rect x="52" y="58" width="66" height="90" rx="5" fill="#C0633A"/>
-      <!-- Cover border inset -->
-      <rect x="58" y="65" width="54" height="76" rx="3"
-            fill="none" stroke="#E8845A" stroke-width="1.5" opacity="0.55"/>
-      <!-- Cover title band -->
-      <rect x="63" y="78" width="44" height="7" rx="2" fill="#E8845A" opacity="0.45"/>
-      <!-- Cover author lines -->
-      <rect x="67" y="91" width="36" height="4" rx="2" fill="#E8845A" opacity="0.30"/>
-      <rect x="69" y="100" width="32" height="3" rx="1" fill="#E8845A" opacity="0.22"/>
-      <!-- Small decorative star on cover -->
-      <circle cx="85" cy="118" r="4" fill="#F5C88A" opacity="0.55"/>
-      <polygon points="85,113 86.2,116.6 90,116.6 87.2,118.8 88.4,122.4 85,120.2 81.6,122.4 82.8,118.8 80,116.6 83.8,116.6"
-               fill="#F5C88A" opacity="0.75" transform="scale(0.65) translate(46,63)"/>
-      <!-- Spine -->
-      <rect x="52" y="58" width="8" height="90" rx="4" fill="#7A3210"/>
-      <!-- Spine highlight -->
-      <rect x="54" y="62" width="2" height="82" rx="1" fill="#D06040" opacity="0.40"/>
+      <polygon points="22,58  158,58  158,148  22,148" fill="#C0633A"/>
+      <!-- Cover inset border -->
+      <polygon points="30,66  150,66  150,140  30,140"
+               fill="none" stroke="#E8845A" stroke-width="1.5" opacity="0.50"/>
+      <!-- Cover title lines -->
+      <rect x="38" y="78" width="104" height="7" rx="3" fill="#E8845A" opacity="0.40"/>
+      <rect x="44" y="90" width="92"  height="5" rx="2" fill="#E8845A" opacity="0.26"/>
+      <rect x="50" y="100" width="80" height="4" rx="2" fill="#E8845A" opacity="0.18"/>
+
+      <!-- Spine (left edge) -->
+      <polygon points="22,58  32,58  32,148  22,148" fill="#6E2808"/>
+      <!-- Spine top (3D ledge) -->
+      <polygon points="22,58  32,58  36,54  26,54" fill="#8B3810"/>
+      <!-- Spine highlight line -->
+      <line x1="25" y1="60" x2="25" y2="146" stroke="#B05030" stroke-width="1.8" opacity="0.35"/>
     </g><!-- /.book__closed -->
 
     <!-- ════════════════════════════════════════════════════════════
          OPEN BOOK  (focus states)
+         Oblique V-shape: spine is the hinge, pages fan out to each side.
+         Viewed from slightly above — both page faces visible.
          ════════════════════════════════════════════════════════════ -->
     <g class="book__open">
+      <ellipse cx="90" cy="150" rx="62" ry="6" fill="rgba(0,0,0,0.09)"/>
 
-      <!-- Drop shadow -->
-      <ellipse cx="90" cy="139" rx="56" ry="5" fill="rgba(0,0,0,0.10)"/>
+      <!-- ── Left page face (read side) ───────────────────────── -->
+      <!-- Polygon leans left; top-left is lower than top-right (spine is raised) -->
+      <polygon class="book__page-left"
+               points="22,68  87,55  87,140  22,148"
+               fill="#FDFAF4"/>
+      <!-- Subtle cover remnant on far-left edge -->
+      <polygon points="22,68  29,68  29,148  22,148" fill="#B05030" opacity="0.30"/>
+      <!-- Text lines: parallel to the parallelogram's top/bottom edges -->
+      <line x1="32" y1="73" x2="84" y2="62" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.68"/>
+      <line x1="32" y1="81" x2="84" y2="70" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.64"/>
+      <line x1="32" y1="89" x2="84" y2="78" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.62"/>
+      <line x1="32" y1="97" x2="84" y2="86" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.58"/>
+      <line x1="32" y1="105" x2="84" y2="94" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.54"/>
+      <line x1="32" y1="113" x2="84" y2="102" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.50"/>
+      <line x1="32" y1="121" x2="84" y2="110" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.46"/>
+      <line x1="32" y1="129" x2="84" y2="118" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.40"/>
 
-      <!-- Left page (read pages — CSS page-turn pivots right center) -->
-      <g class="book__page-left">
-        <!-- Back cover remnant on far left edge -->
-        <rect x="30" y="55" width="6" height="80" rx="3" fill="#C0633A"/>
-        <!-- Page body -->
-        <rect x="30" y="55" width="58" height="80" rx="3" fill="#FDFAF4"/>
-        <!-- Text lines -->
-        <line x1="40" y1="68" x2="82" y2="68" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.75"/>
-        <line x1="40" y1="75" x2="82" y2="75" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.70"/>
-        <line x1="40" y1="82" x2="82" y2="82" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.70"/>
-        <line x1="40" y1="89" x2="82" y2="89" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.65"/>
-        <line x1="40" y1="96" x2="82" y2="96" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.60"/>
-        <line x1="40" y1="103" x2="78" y2="103" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
-        <line x1="40" y1="110" x2="80" y2="110" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.50"/>
-        <line x1="40" y1="117" x2="74" y2="117" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.45"/>
-        <!-- Small decorative paragraph mark -->
-        <circle cx="42" cy="90" r="1.5" fill="#C8B49A" opacity="0.40"/>
-      </g><!-- /.book__page-left -->
+      <!-- ── Right page face (unread side) ─────────────────────── -->
+      <polygon class="book__page-right"
+               points="93,55  158,68  158,148  93,140"
+               fill="#FDF6E8"/>
+      <!-- Text lines: parallel to the parallelogram's top/bottom edges -->
+      <line x1="96" y1="62" x2="152" y2="73" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.68"/>
+      <line x1="96" y1="70" x2="152" y2="81" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.64"/>
+      <line x1="96" y1="78" x2="152" y2="89" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.62"/>
+      <line x1="96" y1="86" x2="152" y2="97" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.58"/>
+      <line x1="96" y1="94" x2="152" y2="105" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.54"/>
+      <line x1="96" y1="102" x2="152" y2="113" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.50"/>
+      <line x1="96" y1="110" x2="152" y2="121" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.46"/>
+      <line x1="96" y1="118" x2="152" y2="129" stroke="#C8B49A" stroke-width="1.1" stroke-linecap="round" opacity="0.40"/>
 
-      <!-- Right page (unread pages — static) -->
-      <g class="book__page-right">
-        <!-- Page body -->
-        <rect x="92" y="55" width="58" height="80" rx="3" fill="#FDF6E8"/>
-        <!-- Text lines -->
-        <line x1="100" y1="68" x2="142" y2="68" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.75"/>
-        <line x1="100" y1="75" x2="142" y2="75" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.70"/>
-        <line x1="100" y1="82" x2="142" y2="82" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.70"/>
-        <line x1="100" y1="89" x2="142" y2="89" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.65"/>
-        <line x1="100" y1="96" x2="142" y2="96" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.60"/>
-        <line x1="100" y1="103" x2="138" y2="103" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
-        <line x1="100" y1="110" x2="140" y2="110" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.50"/>
-        <line x1="100" y1="117" x2="134" y2="117" stroke="#C8B49A" stroke-width="1.2" stroke-linecap="round" opacity="0.45"/>
-      </g><!-- /.book__page-right -->
+      <!-- ── Spine / binding ────────────────────────────────────── -->
+      <polygon class="book__spine"
+               points="87,55  93,55  93,140  87,140"
+               fill="#944020"/>
+      <!-- Spine top ridge (3D crease) -->
+      <polygon points="84,52  96,52  93,55  87,55" fill="#7A3015"/>
+      <!-- Spine center highlight -->
+      <line x1="90" y1="55" x2="90" y2="139" stroke="#C06040" stroke-width="1.5" opacity="0.35"/>
 
-      <!-- Spine (center crease) -->
-      <g class="book__spine">
-        <rect x="87" y="55" width="6" height="80" rx="2" fill="#A0522D"/>
-        <rect x="88" y="57" width="1.5" height="76" rx="0.5" fill="#D06040" opacity="0.40"/>
-      </g>
-
+      <!-- ── Page-flip element (CSS-animated) ──────────────────── -->
+      <!-- A page that lifts from the right pile, arcs over the spine,
+           and lands on the left pile. Starts transparent; CSS fades it in,
+           animates scaleX 1→0→-1, then fades out.
+           transform-origin: left center (= the spine, x≈93) via fill-box. -->
+      <polygon class="book__page-turn"
+               points="93,55  158,68  158,148  93,140"
+               fill="#FDF2DC"/>
     </g><!-- /.book__open -->
 
-    <!-- Right page-edge stack — JS updates width and x every tick
-         Right edge is anchored at x=156; as ratio→1: width 6→1, x=150→155 -->
-    <rect id="book__page-edge" x="150" y="57" width="6" height="76"
-          rx="2" fill="#EDE8DF"/>
-
-    <!-- Bookmark ribbon + V-notch — JS updates transform="translate(dx,0)"
-         dx range: 0→39 (moves bookmark from x=103 to x=142) -->
-    <g id="book__bookmark" transform="translate(0,0)">
-      <rect x="103" y="55" width="7" height="30" rx="1" fill="#E84040"/>
-      <!-- V-notch at bottom of ribbon -->
-      <polygon points="103,85 106.5,81 110,85" fill="#FDF6E8"/>
-      <!-- Ribbon shine -->
-      <rect x="104" y="57" width="2" height="22" rx="1" fill="#FF7070" opacity="0.45"/>
-    </g>
+    <!-- ── Page stacks — JS-driven widths via setProgress() ──────────────
+         Left stack (read):   right edge anchored at x=22, grows leftward
+         Right stack (unread): left edge anchored at x=158, shrinks inward
+         Both hidden by default; CSS shows them only during focus states.
+         ──────────────────────────────────────────────────────────────── -->
+    <rect id="book__stack-left"  x="20" y="68" width="2" height="80"
+          rx="1" fill="url(#pageStackGrad)"/>
+    <rect id="book__stack-right" x="158" y="68" width="20" height="80"
+          rx="1" fill="url(#pageStackGrad)"/>
 
     <!-- ════════════════════════════════════════════════════════════
-         ZZZ  (focus-sleeping state)
+         ZZZ  (focus-sleeping)
          ════════════════════════════════════════════════════════════ -->
     <g class="book__zzz">
       <text class="zzz-small"  x="148" y="50"
@@ -145,31 +171,29 @@
 
   <!-- ════════════════════════════════════════════════════════════
        SHELF SCENE  (break-active / break-done)
-       Lives OUTSIDE book__root so the fly-out animation doesn't take it.
-       CSS hides this by default; book--break-active shows it.
+       Outside book__root so the fly-out animation doesn't take it.
        ════════════════════════════════════════════════════════════ -->
   <g id="book__shelf" class="book__shelf">
 
-    <!-- Shelf bracket left -->
-    <rect x="24" y="110" width="5" height="28" rx="2" fill="#6B4226"/>
-    <!-- Shelf bracket right -->
-    <rect x="151" y="110" width="5" height="28" rx="2" fill="#6B4226"/>
-    <!-- Shelf plank -->
-    <rect x="20" y="127" width="140" height="11" rx="3" fill="#8B5E3C"/>
-    <!-- Plank top highlight -->
-    <rect x="20" y="127" width="140" height="3" rx="2" fill="#A87050" opacity="0.50"/>
-    <!-- Plank shadow -->
-    <rect x="22" y="137" width="138" height="5" rx="2" fill="#5A3820" opacity="0.22"/>
+    <!-- Shelf wall brackets -->
+    <rect x="24" y="108" width="5" height="30" rx="2" fill="#6B4226"/>
+    <rect x="151" y="108" width="5" height="30" rx="2" fill="#6B4226"/>
 
-    <!-- Session book 1 — blue (always shown when shelf is visible) -->
+    <!-- Shelf plank (oblique for depth) -->
+    <polygon points="20,127  160,127  163,133  17,133" fill="#8B5E3C"/>
+    <polygon points="20,127  163,133  163,136  20,136" fill="#6B4020" opacity="0.45"/>
+    <!-- Plank top highlight -->
+    <rect x="20" y="127" width="140" height="2" rx="1" fill="#A87050" opacity="0.55"/>
+
+    <!-- Session book 1 — blue (always visible on shelf) -->
     <g class="shelf-book shelf-book--1">
       <rect x="32" y="97" width="18" height="30" rx="2" fill="#4A8FCB"/>
-      <rect x="32" y="97" width="4"  height="30" rx="1" fill="#336AA0"/>
+      <rect x="32" y="97" width="4" height="30" rx="1" fill="#336AA0"/>
       <rect x="36" y="102" width="11" height="3" rx="1" fill="#7BBDE8" opacity="0.65"/>
       <rect x="36" y="108" width="9"  height="2" rx="1" fill="#7BBDE8" opacity="0.45"/>
     </g>
 
-    <!-- Session book 2 — orange (hidden until sessionNumber ≥ 2) -->
+    <!-- Session book 2 — orange (shown when sessionNumber ≥ 2) -->
     <g class="shelf-book shelf-book--2">
       <rect x="54" y="100" width="20" height="27" rx="2" fill="#D96B30"/>
       <rect x="54" y="100" width="5"  height="27" rx="1" fill="#B0501E"/>
@@ -193,16 +217,13 @@
       <rect x="105" y="112" width="8"  height="2" rx="1" fill="#CC88E0" opacity="0.45"/>
     </g>
 
-    <!-- Sparkle star above shelf center -->
+    <!-- Sparkle star above shelf -->
     <g class="book__sparkle">
-      <!-- Central glow -->
       <circle cx="90" cy="82" r="4" fill="#F5C840" opacity="0.85"/>
-      <!-- Cardinal rays -->
       <line x1="90" y1="74" x2="90" y2="70" stroke="#F5C840" stroke-width="1.8" stroke-linecap="round"/>
       <line x1="90" y1="90" x2="90" y2="94" stroke="#F5C840" stroke-width="1.8" stroke-linecap="round"/>
       <line x1="82"  y1="82" x2="78"  y2="82" stroke="#F5C840" stroke-width="1.8" stroke-linecap="round"/>
       <line x1="98"  y1="82" x2="102" y2="82" stroke="#F5C840" stroke-width="1.8" stroke-linecap="round"/>
-      <!-- Diagonal rays -->
       <line x1="85" y1="77" x2="82" y2="74" stroke="#F5C840" stroke-width="1.2" stroke-linecap="round" opacity="0.70"/>
       <line x1="95" y1="77" x2="98" y2="74" stroke="#F5C840" stroke-width="1.2" stroke-linecap="round" opacity="0.70"/>
       <line x1="85" y1="87" x2="82" y2="90" stroke="#F5C840" stroke-width="1.2" stroke-linecap="round" opacity="0.70"/>

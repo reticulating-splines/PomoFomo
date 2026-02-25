@@ -693,11 +693,11 @@ body[data-paused="true"] .timer-stage::after {
 .book .book__zzz     { display: none; }
 .book #book__shelf   { display: none; }
 
-/* Page-edge and bookmark are inside .book__open so they're hidden with it.
-   But they live outside .book__open in the SVG (at book__root level) so they
-   stay on top of pages. Hide them explicitly when not in focus states. */
-.book #book__page-edge { display: none; }
-.book #book__bookmark  { display: none; }
+/* Page stacks are inside book__root (so they're hidden during breaks when
+   book__root is display:none). Hide them explicitly during non-focus states
+   (e.g. idle, closed book). JS drives their width/x attributes. */
+.book #book__stack-left,
+.book #book__stack-right { display: none; }
 
 /* Session books 2-4 hidden by default — JS shows by sessionNumber */
 .shelf-book--2,
@@ -715,14 +715,12 @@ body[data-paused="true"] .timer-stage::after {
 .book--focus-sleeping .book__closed {
   display: none;
 }
-.book--focus          #book__page-edge,
-.book--focus-tired    #book__page-edge,
-.book--focus-sleeping #book__page-edge {
-  display: block;
-}
-.book--focus          #book__bookmark,
-.book--focus-tired    #book__bookmark,
-.book--focus-sleeping #book__bookmark {
+.book--focus          #book__stack-left,
+.book--focus-tired    #book__stack-left,
+.book--focus-sleeping #book__stack-left,
+.book--focus          #book__stack-right,
+.book--focus-tired    #book__stack-right,
+.book--focus-sleeping #book__stack-right {
   display: block;
 }
 
@@ -744,41 +742,48 @@ body[data-paused="true"] .timer-stage::after {
   animation: breathe 4.5s ease-in-out infinite;
 }
 
-/* ── State: focus — open book, slow page turn ────────────────────────────── */
-/* Page turn: left page scaleX-flips to simulate pages turning.
-   transform-origin: right center pivots at the spine edge. */
-@keyframes page-turn-slow {
-  0%,  58% { transform: scaleX(1); }
-  72%       { transform: scaleX(0); }
-  73%       { transform: scaleX(0); }
-  87%, 100% { transform: scaleX(1); }
+/* ── Page-turn animation (oblique view) ──────────────────────────────────── */
+/* .book__page-turn is a polygon covering the right page face.
+   With transform-origin: left center (at the spine) + transform-box: fill-box,
+   scaleX(1)  = page lies on right side  (unread pile)
+   scaleX(0)  = page edge-on at the spine
+   scaleX(-1) = page mirrored onto left side (read pile)
+   The element starts and ends at opacity:0 so it only shows during the flip. */
+@keyframes oblique-page-flip {
+  0%   { transform: scaleX(1);  opacity: 0; }
+  3%   { opacity: 0.9;                      }  /* appear on right page */
+  45%  { transform: scaleX(0);              }  /* arc over spine */
+  55%  { transform: scaleX(-1);             }  /* land on left page */
+  88%  { opacity: 0.5;                      }
+  98%  { transform: scaleX(-1); opacity: 0; }  /* fade out */
+  99%  { transform: scaleX(1);  opacity: 0; }  /* snap back while hidden */
+  100% { transform: scaleX(1);  opacity: 0; }
 }
 
+/* Shared transform properties for all focus-state page-turn animations */
+.book--focus          .book__page-turn,
+.book--focus-tired    .book__page-turn,
+.book--focus-sleeping .book__page-turn {
+  transform-origin: left center;
+  transform-box: fill-box;
+}
+
+/* ── State: focus — open book, slow page turn ────────────────────────────── */
 .book--focus .book__root {
   animation: breathe 4s ease-in-out infinite;
 }
 
-.book--focus .book__page-left {
-  transform-origin: right center;
-  transform-box: fill-box;
-  animation: page-turn-slow 6s ease-in-out infinite;
+.book--focus .book__page-turn {
+  animation: oblique-page-flip 6s ease-in-out infinite;
 }
 
 /* ── State: focus-tired — faster page turn + tired-sway on root ──────────── */
-@keyframes page-turn-fast {
-  0%,  38% { transform: scaleX(1); }
-  50%       { transform: scaleX(0); }
-  62%, 100% { transform: scaleX(1); }
-}
-
 .book--focus-tired .book__root {
   animation: tired-sway 4s ease-in-out infinite;
 }
 
-.book--focus-tired .book__page-left {
-  transform-origin: right center;
-  transform-box: fill-box;
-  animation: page-turn-fast 3.5s ease-in-out infinite;
+.book--focus-tired .book__page-turn {
+  animation: oblique-page-flip 3.5s ease-in-out infinite;
 }
 
 /* ── State: focus-sleeping — pages barely move + ZZZ floats ──────────────── */
@@ -787,10 +792,8 @@ body[data-paused="true"] .timer-stage::after {
   animation: tired-sway 5s ease-in-out infinite;
 }
 
-.book--focus-sleeping .book__page-left {
-  transform-origin: right center;
-  transform-box: fill-box;
-  animation: page-turn-slow 12s ease-in-out infinite;
+.book--focus-sleeping .book__page-turn {
+  animation: oblique-page-flip 12s ease-in-out infinite;
 }
 
 /* Reuse existing zzz-small/medium/large transform-box rules from dragon section */
