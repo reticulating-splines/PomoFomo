@@ -1,369 +1,288 @@
 /**
  * PomoFomo — Timer Tab (timer.js)
  *
- * Responsibilities:
- *  - Request and receive state from the service worker
- *  - Render the progress arc, time display, session dots, status label
- *  - Wire button clicks to service worker messages
- *  - Update the dragon state via DragonController
- *  - Update the favicon via FaviconUpdater
- *  - Play sounds via SoundPlayer (unlocked on first user gesture)
+ * Pure renderer: reads state from chrome.storage on load, subscribes to
+ * chrome.storage.onChanged for every update, and sends user actions to the
+ * service worker. No timing decisions happen here — the per-second interval
+ * only repaints time derived from startTime/phaseDuration.
  *
- * This file does NOT make timing decisions — it displays what the SW tells it.
+ * Chimes are derived from observed status transitions (focus → warning,
+ * anything → break, snooze), so no push messaging from the SW is needed.
  */
 
-import { MSG, STATUS } from '../shared/constants.js';
+import {
+  STATUS, MSG, BREAK_STATUSES, DEFAULT_SETTINGS,
+} from '../shared/constants.js';
+import { getState, getSettings } from '../shared/storage.js';
+import { createCharacter } from './character.js';
 import { FaviconUpdater } from '../favicon/favicon.js';
 import { SoundPlayer } from '../sounds/sounds.js';
 
-// ── Arc geometry (must match SVG viewBox in timer.html) ──────────────────────
-const ARC_RADIUS       = 96;
-const ARC_CIRCUMFERENCE = 2 * Math.PI * ARC_RADIUS; // ≈ 603.2
+// ── Arc geometry (matches the SVG in timer.html) ─────────────────────────────
+const ARC_RADIUS = 96;
+const ARC_CIRCUMFERENCE = 2 * Math.PI * ARC_RADIUS;
+
+// How long the character celebrates "break-done" when a break rolls into the
+// next focus session, before settling into the focus pose.
+const BREAK_DONE_MS = 1600;
 
 // ── Element refs ─────────────────────────────────────────────────────────────
-const bodyEl          = document.body;
-const progressArc     = document.getElementById('progressArc');
-const timeDisplay     = document.getElementById('timeDisplay');
-const statusLabel     = document.getElementById('statusLabel');
-const sessionDots     = document.getElementById('sessionDots');
-const sessionLabelEl  = document.getElementById('sessionLabel');
-const btnSnooze       = document.getElementById('btnSnooze');
-const breakBanner     = document.getElementById('breakBanner');
-const breakBannerTitle   = document.getElementById('breakBannerTitle');
-const breakBannerSubtitle = document.getElementById('breakBannerSubtitle');
-const faviconLink     = document.getElementById('favicon');
+const bodyEl        = document.body;
+const progressArc   = document.getElementById('progressArc');
+const timeDisplay   = document.getElementById('timeDisplay');
+const statusLabel   = document.getElementById('statusLabel');
+const sessionDots   = document.getElementById('sessionDots');
+const sessionLabel  = document.getElementById('sessionLabel');
+const btnStart      = document.getElementById('btnStart');
+const btnSnooze     = document.getElementById('btnSnooze');
+const btnStopLink   = document.getElementById('btnStopLink');
+const breakBanner   = document.getElementById('breakBanner');
+const bannerTitle   = document.getElementById('breakBannerTitle');
+const bannerSubtitle = document.getElementById('breakBannerSubtitle');
+const characterContainer = document.getElementById('characterContainer');
 
-// ── Module instances ─────────────────────────────────────────────────────────
-const favicon  = new FaviconUpdater(faviconLink);
-const sounds   = new SoundPlayer();
+const favicon = new FaviconUpdater(document.getElementById('favicon'));
+const sounds  = new SoundPlayer();
 
-// The active character controller — either DragonController or BookController.
-// Whichever script fires its ready event first (only one will fire, based on setting).
+// ── Local caches ─────────────────────────────────────────────────────────────
+let currentState = null;
+let settings = { ...DEFAULT_SETTINGS };
 let character = null;
+let tickInterval = null;
+let celebrateTimer = null; // non-null while playing the break-done pose
 
-window.addEventListener('dragonReady', (e) => {
-  character = e.detail.controller;
-  if (currentState) character.setState(statusToCharacterState(currentState));
+progressArc.style.strokeDasharray = ARC_CIRCUMFERENCE;
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+
+async function init() {
+  const [state, loadedSettings] = await Promise.all([getState(), getSettings()]);
+  settings = loadedSettings;
+  sounds.setEnabled(settings.soundEnabled);
+  character = await createCharacter(settings.timerCharacter, characterContainer);
+  characterContainer.setAttribute(
+    'aria-label',
+    settings.timerCharacter === 'book' ? 'Page the book' : 'Ember the dragon',
+  );
+  render(state);
+}
+
+init();
+
+// ── Storage subscription — the only state input after load ───────────────────
+
+chrome.storage.onChanged.addListener(async (changes, area) => {
+  if (area === 'local') {
+    const prev = currentState;
+    const next = await getState();
+    onTransition(prev, next);
+    render(next);
+  } else if (area === 'sync') {
+    const prevCharacter = settings.timerCharacter;
+    settings = await getSettings();
+    sounds.setEnabled(settings.soundEnabled);
+    if (settings.timerCharacter !== prevCharacter) await swapCharacter();
+    if (currentState) render(currentState);
+  }
 });
 
-window.addEventListener('bookReady', (e) => {
-  character = e.detail.controller;
-  if (currentState) character.setState(statusToCharacterState(currentState));
-});
+async function swapCharacter() {
+  character?.destroy();
+  character = await createCharacter(settings.timerCharacter, characterContainer);
+  characterContainer.setAttribute(
+    'aria-label',
+    settings.timerCharacter === 'book' ? 'Page the book' : 'Ember the dragon',
+  );
+  if (currentState) character.setState(characterState(currentState));
+}
 
-// ── State ─────────────────────────────────────────────────────────────────────
-let currentState      = null;
-let tickInterval      = null;
-let soundsUnlocked    = false;
-let ambientIsPlaying  = false;
+// ── Transition effects (chimes + celebrations) ───────────────────────────────
 
-// ── Nag mode ──────────────────────────────────────────────────────────────────
-let nagInterval  = null;
-let myTabId      = null;
-let myWindowId   = null;
-
-// ── Arc setup ─────────────────────────────────────────────────────────────────
-progressArc.style.strokeDasharray  = ARC_CIRCUMFERENCE;
-progressArc.style.strokeDashoffset = ARC_CIRCUMFERENCE; // starts empty
-
-// ── Listen for state pushes from service worker ───────────────────────────────
-chrome.runtime.onMessage.addListener((msg) => {
-  if (msg.type === MSG.STATE_UPDATE && msg.state) {
-    applyState(msg.state);
+function onTransition(prev, next) {
+  if (!prev || prev.status === next.status) {
+    // Same phase — the only interesting micro-transition is snooze
+    if (prev && !prev.snoozeUsed && next.snoozeUsed) sounds.playChime('snooze');
     return;
   }
-  if (msg.type === MSG.PLAY_CHIME) {
-    if (soundsUnlocked) sounds.playChime(msg.variant ?? 'warning');
-  }
-});
 
-// ── Request current state on load (with retry if SW not ready) ────────────────
-// The service worker and the timer tab both restart on extension reload.
-// GET_STATE is retried several times in case the SW is still waking up.
-// background.js also pushes state proactively via chrome.tabs.onUpdated,
-// so whichever arrives first wins — both call applyState(), which is idempotent.
-async function loadInitialState() {
-  let retries = 6;
-  while (retries-- > 0) {
-    try {
-      const state = await chrome.runtime.sendMessage({ type: MSG.GET_STATE });
-      if (state) { applyState(state); return; }
-    } catch (_e) {
-      // SW may still be waking up — keep trying
-    }
-    await new Promise(r => setTimeout(r, 400));
+  const wasBreak = BREAK_STATUSES.includes(prev.status);
+  const isBreak  = BREAK_STATUSES.includes(next.status);
+
+  if (next.status === STATUS.FOCUS_WARNING) {
+    sounds.playChime('warning');
+  } else if (isBreak && !wasBreak) {
+    sounds.playChime('break');
+  } else if (wasBreak && next.status === STATUS.FOCUS) {
+    // Break rolled into the next session — let the character celebrate first
+    celebrate();
   }
-  // Fallback: show idle — background.js push (via handleTabUpdated) may still
-  // arrive and correct this within the next second.
-  applyState({ status: STATUS.IDLE, sessionNumber: 1, snoozeUsed: false });
 }
 
-loadInitialState();
+function celebrate() {
+  clearTimeout(celebrateTimer);
+  character?.setState('break-done');
+  celebrateTimer = setTimeout(() => {
+    celebrateTimer = null;
+    if (currentState) character?.setState(characterState(currentState));
+  }, BREAK_DONE_MS);
+}
 
-// ── Resolve tab identity for nag mode ────────────────────────────────────────
-chrome.tabs.getCurrent().then(tab => {
-  if (tab) { myTabId = tab.id; myWindowId = tab.windowId; }
-}).catch(() => {});
+// ── Render ───────────────────────────────────────────────────────────────────
 
-// ── Hide inactive character container ────────────────────────────────────────
-// Both dragon.js and book.js are always loaded (as modules), but only one
-// instantiates based on the timerCharacter setting. Hide the other container
-// so it doesn't occupy space or cause layout issues.
-chrome.storage.sync.get('timerCharacter').then(r => {
-  const active = r.timerCharacter ?? 'dragon';
-  const dragonEl = document.getElementById('dragonContainer');
-  const bookEl   = document.getElementById('bookContainer');
-  if (dragonEl) dragonEl.hidden = (active !== 'dragon');
-  if (bookEl)   bookEl.hidden   = (active !== 'book');
-}).catch(() => {
-  // Fallback: show dragon (the default)
-  const bookEl = document.getElementById('bookContainer');
-  if (bookEl) bookEl.hidden = true;
-});
-
-// ── Core render ───────────────────────────────────────────────────────────────
-function applyState(state) {
+function render(state) {
   currentState = state;
 
-  // ── Body theme class ───────────────────────────────────────────────────────
   bodyEl.dataset.status = state.status;
-  bodyEl.dataset.paused = state.isPaused ? 'true' : 'false';
+  bodyEl.dataset.paused = String(Boolean(state.isPaused));
 
-  // ── Character (dragon or book) ─────────────────────────────────────────────
-  if (character) character.setState(statusToCharacterState(state));
+  if (character && !celebrateTimer) {
+    const target = characterState(state);
+    // Don't replay the break-start jump if we've already settled into
+    // break-active (e.g. a settings change re-rendered mid-break)
+    if (!(target === 'break-start' && character.currentState === 'break-active')) {
+      character.setState(target);
+    }
+  }
 
-  // ── Session dots ───────────────────────────────────────────────────────────
   renderSessionDots(state);
-
-  // ── Controls ───────────────────────────────────────────────────────────────
   renderControls(state);
+  renderBanner(state);
+  statusLabel.textContent = statusText(state);
 
-  // ── Status label ───────────────────────────────────────────────────────────
-  statusLabel.textContent = getStatusLabel(state);
-
-  // ── Break banner ───────────────────────────────────────────────────────────
-  renderBreakBanner(state);
-
-  // ── Tick interval ──────────────────────────────────────────────────────────
   clearInterval(tickInterval);
-  if (isActivePhase(state)) {
-    tick(state);
-    tickInterval = setInterval(() => tick(currentState), 1000);
+  if (isRunning(state)) {
+    tick();
+    tickInterval = setInterval(tick, 1000);
   } else {
-    // Show the phase's full duration as the default display
-    const defaultMs = state.phaseDuration ?? getDefaultDisplayMs(state.status);
-    timeDisplay.textContent = formatTime(defaultMs);
-    progressArc.style.strokeDashoffset = ARC_CIRCUMFERENCE;
+    // Idle or paused: show a static time and a full (ready) ring
+    const ms = state.isPaused && state.pausedRemaining != null
+      ? state.pausedRemaining
+      : state.phaseDuration ?? settings.focusMinutes * 60 * 1000;
+    timeDisplay.textContent = formatTime(ms);
+    progressArc.style.strokeDashoffset = 0;
   }
 
   favicon.update(state);
-
-  // ── Ambient sounds ─────────────────────────────────────────────────────────
-  const isBreakPhase = state.status === STATUS.BREAK || state.status === STATUS.LONG_BREAK;
-  if (isBreakPhase && soundsUnlocked && !ambientIsPlaying) {
-    sounds.startAmbient();
-    ambientIsPlaying = true;
-  } else if (!isBreakPhase && ambientIsPlaying) {
-    sounds.stopAmbient();
-    ambientIsPlaying = false;
-  }
-
-  // ── Nag mode ────────────────────────────────────────────────────────────────
-  // During break phases, optionally re-grab focus every 20 seconds.
-  // Uses setInterval in the timer tab (chrome.alarms minimum is 1 min).
-  if (isBreakPhase) {
-    chrome.storage.sync.get('nagDuringBreak').then(r => {
-      r.nagDuringBreak ? startNag() : stopNag();
-    }).catch(() => stopNag());
-  } else {
-    stopNag();
-  }
+  syncAmbient(state);
 }
 
-// ── Tick (called every second) ────────────────────────────────────────────────
-function tick(state) {
-  if (!state || !state.startTime || !state.phaseDuration) return;
+function tick() {
+  const state = currentState;
+  if (!isRunning(state)) return;
 
-  const elapsed   = Date.now() - state.startTime;
+  const elapsed = Date.now() - state.startTime;
   const remaining = Math.max(0, state.phaseDuration - elapsed);
+  const ratio = Math.min(1, elapsed / state.phaseDuration);
 
   timeDisplay.textContent = formatTime(remaining);
-  updateArc(elapsed, state.phaseDuration, state.status);
+
+  // Focus: ring drains toward empty. Break: ring fills back up (recharge).
+  const shown = BREAK_STATUSES.includes(state.status) ? ratio : 1 - ratio;
+  progressArc.style.strokeDashoffset = ARC_CIRCUMFERENCE * (1 - shown);
+
   favicon.update(state);
 
-  // Progressive sleepiness in the final seconds of focus-warning.
-  // The SW state stays FOCUS_WARNING — this is purely a visual character transition.
-  if (state.status === STATUS.FOCUS_WARNING && character) {
-    const target = remaining <= 10_000 ? 'focus-sleeping' : 'focus-tired';
-    if (character.currentState !== target) character.setState(target);
+  // Final seconds of the warning: the character nods off (visual only —
+  // the SW state stays focus-warning)
+  if (state.status === STATUS.FOCUS_WARNING && character && !celebrateTimer) {
+    character.setState(remaining <= 10_000 ? 'focus-sleeping' : 'focus-tired');
   }
 
-  // Drive book progress (bookmark position + page-edge width).
-  // The dragon controller ignores setProgress (it doesn't have the method).
-  if (character && typeof character.setProgress === 'function') {
-    character.setProgress(Math.min(1, elapsed / state.phaseDuration), state);
-  }
+  character?.setProgress(ratio, state);
 }
 
-// ── Arc update ────────────────────────────────────────────────────────────────
-function updateArc(elapsed, total, status) {
-  const isBreak = status === STATUS.BREAK || status === STATUS.LONG_BREAK;
+function renderSessionDots(state) {
+  const total = settings.sessionsBeforeLongBreak;
+  const onBreak = BREAK_STATUSES.includes(state.status);
 
-  // Focus: arc drains (shows time remaining, draining toward empty)
-  // Break:  arc fills (shows recharge progress, filling toward full)
-  let progress;
-  if (isBreak) {
-    progress = Math.min(1, elapsed / total);      // 0 → 1 (fills)
-  } else {
-    progress = Math.max(0, 1 - elapsed / total);  // 1 → 0 (drains)
-  }
-
-  progressArc.style.strokeDashoffset = ARC_CIRCUMFERENCE * (1 - progress);
-}
-
-// ── Session dots ──────────────────────────────────────────────────────────────
-async function renderSessionDots(state) {
-  // Get sessionsBeforeLongBreak from storage (don't block UI on this)
-  let total = 3;
-  try {
-    const result = await chrome.storage.sync.get('sessionsBeforeLongBreak');
-    total = result.sessionsBeforeLongBreak ?? 3;
-  } catch (_e) {}
-
-  sessionDots.innerHTML = '';
-  for (let i = 1; i <= total; i++) {
+  sessionDots.replaceChildren(...Array.from({ length: total }, (_, i) => {
+    const n = i + 1;
     const dot = document.createElement('span');
     dot.className = 'session-dot';
-    dot.setAttribute('aria-label', `Session ${i}`);
-
-    if (i < state.sessionNumber) {
+    // During a break, sessionNumber is the session just completed
+    if (n < state.sessionNumber || (onBreak && n === state.sessionNumber)) {
       dot.classList.add('done');
-    } else if (i === state.sessionNumber) {
+    } else if (n === state.sessionNumber) {
       dot.classList.add('current');
     }
-    sessionDots.appendChild(dot);
-  }
+    return dot;
+  }));
 
-  const isBreak = state.status === STATUS.BREAK || state.status === STATUS.LONG_BREAK;
-  if (isBreak) {
-    sessionLabelEl.textContent = state.status === STATUS.LONG_BREAK
-      ? 'Long break' : 'Break time';
-  } else {
-    sessionLabelEl.textContent = state.sessionNumber === 1
-      ? 'Session 1'
-      : `Session ${state.sessionNumber}`;
-  }
+  sessionLabel.textContent = onBreak
+    ? (state.status === STATUS.LONG_BREAK ? 'Long break' : 'Break time')
+    : `Session ${state.sessionNumber}`;
 }
 
-// ── Controls ─────────────────────────────────────────────────────────────────
-// The timer tab is a pure display. Start / Stop live in the popup.
-// Only the snooze button lives here — it's time-critical and appears right
-// when the focus-warning fires and this tab is already in the foreground.
 function renderControls(state) {
-  const { status, snoozeUsed } = state;
-  btnSnooze.hidden = !(status === STATUS.FOCUS_WARNING && !snoozeUsed);
+  btnStart.hidden = state.status !== STATUS.IDLE;
+  btnSnooze.hidden = !(state.status === STATUS.FOCUS_WARNING && !state.snoozeUsed);
+  btnStopLink.hidden = state.status === STATUS.IDLE;
 }
 
-// ── Break banner ──────────────────────────────────────────────────────────────
-function renderBreakBanner(state) {
-  const isBreak = state.status === STATUS.BREAK || state.status === STATUS.LONG_BREAK;
+function renderBanner(state) {
+  const onBreak = BREAK_STATUSES.includes(state.status);
+  breakBanner.hidden = !onBreak;
+  if (!onBreak) return;
 
-  if (isBreak) {
-    breakBanner.hidden = false;
-    if (state.status === STATUS.LONG_BREAK) {
-      breakBannerTitle.textContent = 'Long break time! 🐉✨';
-      breakBannerSubtitle.textContent = 'You finished a full cycle — Ember is so proud!';
-    } else {
-      breakBannerTitle.textContent = 'Break time! 🐉';
-      breakBannerSubtitle.textContent = 'Ember is celebrating — you\'ve earned this rest.';
-    }
+  const isBook = settings.timerCharacter === 'book';
+  if (state.status === STATUS.LONG_BREAK) {
+    bannerTitle.textContent = isBook ? 'Long break time! 📚✨' : 'Long break time! 🐉✨';
+    bannerSubtitle.textContent = 'You finished a whole cycle — amazing work!';
   } else {
-    breakBanner.hidden = true;
+    bannerTitle.textContent = isBook ? 'Break time! 📖' : 'Break time! 🐉';
+    bannerSubtitle.textContent = isBook
+      ? 'Another chapter done — you\'ve earned this rest.'
+      : 'Ember is celebrating — you\'ve earned this rest.';
   }
 }
 
-// ── Sound unlock ──────────────────────────────────────────────────────────────
-// Web Audio requires a user gesture before AudioContext can resume.
-// Unlock on any click in this tab — catches Snooze clicks plus general
-// tab interaction (clicking links in games, etc.)
+// ── Sounds ───────────────────────────────────────────────────────────────────
+
+function syncAmbient(state) {
+  const wantAmbient = BREAK_STATUSES.includes(state.status) && !state.isPaused;
+  sounds.setAmbient(wantAmbient);
+}
+
+// Web Audio needs a user gesture; the Start button is the natural one, but
+// any click in the tab unlocks (covers reloads mid-session).
 document.addEventListener('click', async () => {
-  if (!soundsUnlocked) {
-    await sounds.unlock();
-    soundsUnlocked = true;
-  }
+  const wasUnlocked = sounds.unlocked;
+  await sounds.unlock();
+  if (!wasUnlocked && currentState) syncAmbient(currentState);
 }, { passive: true });
 
-// ── Button wiring ─────────────────────────────────────────────────────────────
+// ── User actions — send and forget; storage.onChanged repaints ───────────────
 
-// Snooze — 5 extra minutes, once per session, during focus-warning only
-btnSnooze.addEventListener('click', async () => {
-  const newState = await sendMsg(MSG.SNOOZE);
-  if (newState) applyState(newState);
-});
+btnStart.addEventListener('click', () => sendMsg(MSG.START));
+btnSnooze.addEventListener('click', () => sendMsg(MSG.SNOOZE));
+btnStopLink.addEventListener('click', () => sendMsg(MSG.STOP));
 
-// ── Message helper ────────────────────────────────────────────────────────────
-async function sendMsg(type, payload = {}) {
+async function sendMsg(type) {
   try {
-    return await chrome.runtime.sendMessage({ type, ...payload });
+    await chrome.runtime.sendMessage({ type });
   } catch (e) {
-    console.error('[PomoFomo Timer] sendMsg failed:', e);
-    return null;
+    console.error('[PomoFomo Timer] sendMsg failed:', type, e);
   }
 }
 
-// ── Character state mapping ───────────────────────────────────────────────────
-// Used for both DragonController and BookController — both use the same vocabulary.
-function statusToCharacterState(state) {
-  if (state.isPaused) return 'idle';
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
+function characterState(state) {
+  if (state.isPaused) return 'idle';
   switch (state.status) {
-    case STATUS.IDLE:          return 'idle';
     case STATUS.FOCUS:         return 'focus';
-    case STATUS.FOCUS_WARNING: return 'focus-tired';
-    case STATUS.BREAK:         return 'break-start';   // auto-transitions to break-active
-    case STATUS.LONG_BREAK:    return 'break-start';
+    case STATUS.FOCUS_WARNING: return 'focus-tired'; // tick() may deepen to sleeping
+    case STATUS.BREAK:
+    case STATUS.LONG_BREAK:    return 'break-start'; // settles into break-active
     default:                   return 'idle';
   }
 }
 
-// ── Nag mode helpers ──────────────────────────────────────────────────────────
-
-function startNag() {
-  if (nagInterval) return; // already running
-  nagInterval = setInterval(() => {
-    if (!myTabId) return;
-    chrome.tabs.update(myTabId, { active: true }).catch(() => {});
-    if (myWindowId) {
-      chrome.windows.update(myWindowId, { focused: true }).catch(() => {});
-    }
-  }, 20_000);
-}
-
-function stopNag() {
-  if (nagInterval) {
-    clearInterval(nagInterval);
-    nagInterval = null;
-  }
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function isActivePhase(state) {
-  return (
-    state.startTime != null &&
-    state.phaseDuration != null &&
-    !state.isPaused &&
-    state.status !== STATUS.IDLE
-  );
-}
-
-function getDefaultDisplayMs(status) {
-  // Shown when idle — read from storage if possible, otherwise use defaults
-  chrome.storage.sync.get('focusMinutes').then(r => {
-    if (status === STATUS.IDLE) {
-      timeDisplay.textContent = formatTime((r.focusMinutes ?? 20) * 60 * 1000);
-    }
-  }).catch(() => {});
-  return 20 * 60 * 1000; // synchronous fallback
+function isRunning(state) {
+  return state.startTime != null
+    && state.phaseDuration != null
+    && !state.isPaused
+    && state.status !== STATUS.IDLE;
 }
 
 function formatTime(ms) {
@@ -373,12 +292,14 @@ function formatTime(ms) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-function getStatusLabel(state) {
-  if (state.isPaused)                           return 'Paused';
-  if (state.status === STATUS.IDLE)             return state.sessionNumber > 1 ? 'Ready for the next one?' : 'Ready to focus?';
-  if (state.status === STATUS.FOCUS)            return 'Focus time';
-  if (state.status === STATUS.FOCUS_WARNING)    return 'Almost there…';
-  if (state.status === STATUS.BREAK)            return 'Break time!';
-  if (state.status === STATUS.LONG_BREAK)       return 'Long break — great work!';
-  return '';
+function statusText(state) {
+  if (state.isPaused) return 'Paused';
+  switch (state.status) {
+    case STATUS.IDLE:          return 'Ready to focus?';
+    case STATUS.FOCUS:         return 'Focus time';
+    case STATUS.FOCUS_WARNING: return 'Almost there…';
+    case STATUS.BREAK:         return 'Break time!';
+    case STATUS.LONG_BREAK:    return 'Long break — great work!';
+    default:                   return '';
+  }
 }

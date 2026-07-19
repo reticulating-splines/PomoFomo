@@ -1,263 +1,198 @@
 /**
  * PomoFomo — Sound Player (sounds.js)
  *
- * All sounds are synthesized via Web Audio API. No external files needed.
+ * All sounds are synthesized with the Web Audio API — no audio files.
  *
- * IMPORTANT: Chrome's autoplay policy requires a user gesture before an
- * AudioContext can produce sound. Call unlock() on the first user click
- * (the Start button) to enable all subsequent sounds.
+ * Chrome's autoplay policy requires a user gesture before an AudioContext
+ * can produce sound: call unlock() from a click handler. Every play method
+ * is a silent no-op until unlocked.
  */
 
 export class SoundPlayer {
-  #ctx       = null;
-  #enabled   = true;
-  #unlocked  = false;
+  #ctx = null;
+  #enabled = true;
+  #unlocked = false;
 
-  // Active ambient nodes (kept so we can stop them)
-  #ambientNodes  = [];
-  #ambientTimer  = null;
+  // Ambient graph (null when not playing)
+  #ambient = null; // { noiseSource, nodes: [], melodyTimer }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
-  /**
-   * Call this on the first user gesture (Start button click).
-   * Creates and resumes the AudioContext, enabling all future sounds.
-   */
+  /** Call from a user-gesture handler. Safe to call repeatedly. */
   async unlock() {
     try {
       const ctx = this.#getCtx();
-      if (ctx.state === 'suspended') {
-        await ctx.resume();
-      }
+      if (ctx.state === 'suspended') await ctx.resume();
       this.#unlocked = true;
-      console.log('[PomoFomo Sounds] AudioContext unlocked.');
     } catch (e) {
       console.warn('[PomoFomo Sounds] Could not unlock AudioContext:', e);
     }
   }
 
+  get unlocked() { return this.#unlocked; }
+
   setEnabled(val) {
     this.#enabled = Boolean(val);
-    if (!val) this.stopAmbient();
+    if (!this.#enabled) this.#stopAmbient();
+  }
+
+  get #ready() {
+    return this.#enabled && this.#unlocked && this.#getCtx().state === 'running';
   }
 
   // ── Chimes ─────────────────────────────────────────────────────────────────
 
-  /**
-   * Play a chime.
-   * @param {'warning'|'break'|'snooze'} variant
-   */
+  /** @param {'warning'|'break'|'snooze'} variant */
   playChime(variant = 'warning') {
-    if (!this.#enabled || !this.#unlocked) return;
+    if (!this.#ready) return;
     const ctx = this.#getCtx();
-    if (ctx.state !== 'running') return;
+    const now = ctx.currentTime;
 
     switch (variant) {
-      case 'warning': this.#playWarningChime(ctx); break;
-      case 'break':   this.#playBreakChime(ctx);   break;
-      case 'snooze':  this.#playSnoozeTone(ctx);   break;
-      default:        this.#playWarningChime(ctx);
+      case 'break':
+        // Bright ascending arpeggio C5–E5–G5 (+C6 sparkle): celebration
+        [523, 659, 784].forEach((freq, i) =>
+          this.#tone(ctx, { freq, startAt: now + i * 0.14, volume: 0.14, attack: 0.02, decay: 0.7 }));
+        this.#tone(ctx, { freq: 1047, startAt: now + 0.42, volume: 0.07, attack: 0.02, decay: 0.9 });
+        break;
+
+      case 'snooze':
+        // Gentle rising A4 → B4: "okay, a little longer"
+        this.#tone(ctx, { freq: 440, startAt: now, volume: 0.10, attack: 0.04, decay: 0.6 });
+        this.#tone(ctx, { freq: 494, startAt: now + 0.25, volume: 0.08, attack: 0.04, decay: 0.5 });
+        break;
+
+      default:
+        // Soft descending G5 → E5: "heads up"
+        this.#tone(ctx, { freq: 784, startAt: now, volume: 0.12, attack: 0.03, decay: 0.5 });
+        this.#tone(ctx, { freq: 659, startAt: now + 0.28, volume: 0.10, attack: 0.03, decay: 0.6 });
     }
   }
 
-  /** Soft descending two-note tone: G5 → E5. "Heads up." */
-  #playWarningChime(ctx) {
-    const now = ctx.currentTime;
+  // ── Ambient break soundscape ───────────────────────────────────────────────
+  // Soft wind (looped brown-noise buffer through a lowpass) plus sporadic
+  // pentatonic tones, bird-like. Idempotent: setAmbient(true) while already
+  // playing does nothing.
 
-    this.#tone(ctx, {
-      freq:    784,     // G5
-      startAt: now,
-      volume:  0.12,
-      attack:  0.03,
-      decay:   0.5,
-    });
-
-    this.#tone(ctx, {
-      freq:    659,     // E5
-      startAt: now + 0.28,
-      volume:  0.10,
-      attack:  0.03,
-      decay:   0.6,
-    });
+  setAmbient(on) {
+    if (on) this.#startAmbient();
+    else this.#stopAmbient();
   }
 
-  /** Bright ascending three-note arpeggio: C5 → E5 → G5. Celebratory. */
-  #playBreakChime(ctx) {
-    const now = ctx.currentTime;
-    const notes = [523, 659, 784]; // C5, E5, G5
-
-    notes.forEach((freq, i) => {
-      this.#tone(ctx, {
-        freq,
-        startAt: now + i * 0.14,
-        volume:  0.14,
-        attack:  0.02,
-        decay:   0.7,
-      });
-    });
-
-    // Add a soft fourth note an octave up for sparkle
-    this.#tone(ctx, {
-      freq:    1047,    // C6
-      startAt: now + 0.42,
-      volume:  0.07,
-      attack:  0.02,
-      decay:   0.9,
-    });
-  }
-
-  /** Gentle rising tone for snooze acknowledgement. */
-  #playSnoozeTone(ctx) {
-    const now = ctx.currentTime;
-
-    this.#tone(ctx, {
-      freq:    440,     // A4
-      startAt: now,
-      volume:  0.10,
-      attack:  0.04,
-      decay:   0.6,
-    });
-
-    this.#tone(ctx, {
-      freq:    494,     // B4
-      startAt: now + 0.25,
-      volume:  0.08,
-      attack:  0.04,
-      decay:   0.5,
-    });
-  }
-
-  // ── Ambient nature sounds ──────────────────────────────────────────────────
-
-  /** Start ambient break sounds: soft brown noise + pentatonic melodic tones. */
-  startAmbient() {
-    if (!this.#enabled || !this.#unlocked) return;
+  #startAmbient() {
+    if (this.#ambient || !this.#ready) return;
     const ctx = this.#getCtx();
-    if (ctx.state !== 'running') return;
 
-    this.stopAmbient(); // clear any existing
+    const noiseSource = ctx.createBufferSource();
+    noiseSource.buffer = this.#brownNoiseBuffer(ctx);
+    noiseSource.loop = true;
 
-    // ── Brown noise (gentle wind-like texture) ─────────────────────────────
-    const bufferSize = 4096;
-    // createScriptProcessor is deprecated but works fine; migrate to AudioWorklet post-MVP
-    const brownNoiseNode = ctx.createScriptProcessor(bufferSize, 1, 1);
-    let lastOut = 0;
-    brownNoiseNode.onaudioprocess = (e) => {
-      const output = e.outputBuffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        const white = (Math.random() * 2 - 1);
-        output[i] = (lastOut + 0.02 * white) / 1.02;
-        lastOut = output[i];
-        output[i] *= 3.5; // amplify
-      }
-    };
+    const lowpass = ctx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 480;
 
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.value = 0.035; // very subtle — just texture
-    brownNoiseNode.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 1.5); // fade in
 
-    this.#ambientNodes.push(brownNoiseNode, noiseGain);
+    noiseSource.connect(lowpass).connect(gain).connect(ctx.destination);
+    noiseSource.start();
 
-    // ── Pentatonic melodic tones (bird-like, sporadic) ─────────────────────
-    this.#schedulePentatonicTones(ctx);
+    this.#ambient = { noiseSource, nodes: [lowpass, gain], melodyTimer: null };
+    this.#scheduleMelody(ctx);
   }
 
-  /** Schedule a pentatonic tone, then schedule itself again after a random delay. */
-  #schedulePentatonicTones(ctx) {
-    // C4 pentatonic: C, D, E, G, A (one and two octaves)
+  #stopAmbient() {
+    if (!this.#ambient) return;
+    const { noiseSource, nodes, melodyTimer } = this.#ambient;
+    this.#ambient = null;
+    clearTimeout(melodyTimer);
+    try { noiseSource.stop(); } catch { /* already stopped */ }
+    [noiseSource, ...nodes].forEach(n => { try { n.disconnect(); } catch { /* ok */ } });
+  }
+
+  #scheduleMelody(ctx) {
+    // C-major pentatonic across two octaves
     const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33];
 
-    const playTone = () => {
-      if (!this.#enabled || !this.#unlocked || ctx.state !== 'running') return;
+    const playNote = () => {
+      if (!this.#ambient || !this.#ready) return;
 
-      const freq = scale[Math.floor(Math.random() * scale.length)];
-      // Occasionally play a two-note phrase instead of a single note
-      const doPhrase = Math.random() < 0.35;
-
+      const idx = Math.floor(Math.random() * scale.length);
       this.#tone(ctx, {
-        freq,
+        freq: scale[idx],
         startAt: ctx.currentTime,
-        volume:  0.06 + Math.random() * 0.04,
-        attack:  0.05,
-        decay:   1.2 + Math.random() * 0.8,
-        type:    'sine',
+        volume: 0.06 + Math.random() * 0.04,
+        attack: 0.05,
+        decay: 1.2 + Math.random() * 0.8,
       });
 
-      if (doPhrase) {
-        // Second note, slightly higher
-        const freq2 = scale[Math.min(scale.length - 1, scale.indexOf(freq) + 1 + Math.floor(Math.random() * 2))];
+      // Occasionally answer with a slightly higher second note
+      if (Math.random() < 0.35) {
+        const idx2 = Math.min(scale.length - 1, idx + 1 + Math.floor(Math.random() * 2));
         this.#tone(ctx, {
-          freq:    freq2,
+          freq: scale[idx2],
           startAt: ctx.currentTime + 0.25,
-          volume:  0.05 + Math.random() * 0.03,
-          attack:  0.05,
-          decay:   1.0 + Math.random() * 0.6,
-          type:    'sine',
+          volume: 0.05 + Math.random() * 0.03,
+          attack: 0.05,
+          decay: 1.0 + Math.random() * 0.6,
         });
       }
 
-      // Schedule next tone: 2–5 seconds from now
-      const delay = 2000 + Math.random() * 3000;
-      this.#ambientTimer = setTimeout(playTone, delay);
+      this.#ambient.melodyTimer = setTimeout(playNote, 2000 + Math.random() * 3000);
     };
 
-    // Start after a brief pause
-    this.#ambientTimer = setTimeout(playTone, 800);
-  }
-
-  /** Stop all ambient sounds. */
-  stopAmbient() {
-    clearTimeout(this.#ambientTimer);
-    this.#ambientTimer = null;
-
-    this.#ambientNodes.forEach(node => {
-      try { node.disconnect(); } catch (_e) {}
-    });
-    this.#ambientNodes = [];
+    this.#ambient.melodyTimer = setTimeout(playNote, 800);
   }
 
   // ── Internals ──────────────────────────────────────────────────────────────
 
-  /** Lazy AudioContext creation. */
   #getCtx() {
-    if (!this.#ctx) {
-      this.#ctx = new AudioContext();
-    }
+    if (!this.#ctx) this.#ctx = new AudioContext();
     return this.#ctx;
   }
 
-  /**
-   * Play a single synthesized tone.
-   * @param {object} opts
-   * @param {number} opts.freq     — frequency in Hz
-   * @param {number} opts.startAt  — AudioContext time to start
-   * @param {number} opts.volume   — peak gain (0–1)
-   * @param {number} opts.attack   — attack time in seconds
-   * @param {number} opts.decay    — decay/release time in seconds
-   * @param {string} [opts.type]   — oscillator type (default 'sine')
-   */
-  #tone(ctx, { freq, startAt, volume, attack, decay, type = 'sine' }) {
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
+  #noiseBuffer = null;
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+  /** 4-second brown noise loop, generated once. */
+  #brownNoiseBuffer(ctx) {
+    if (this.#noiseBuffer) return this.#noiseBuffer;
+    const length = ctx.sampleRate * 4;
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < length; i++) {
+      const white = Math.random() * 2 - 1;
+      last = (last + 0.02 * white) / 1.02;
+      data[i] = last * 3.5;
+    }
+    // Short crossfade at the loop seam to avoid a click
+    const fade = Math.floor(ctx.sampleRate * 0.05);
+    for (let i = 0; i < fade; i++) {
+      const t = i / fade;
+      data[i] = data[i] * t + data[length - fade + i] * (1 - t);
+    }
+    this.#noiseBuffer = buffer;
+    return buffer;
+  }
+
+  /** One synthesized tone with an attack/decay envelope. */
+  #tone(ctx, { freq, startAt, volume, attack, decay, type = 'sine' }) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain).connect(ctx.destination);
 
     osc.type = type;
     osc.frequency.setValueAtTime(freq, startAt);
 
-    // Envelope: fade in quickly, then decay to silence
     gain.gain.setValueAtTime(0, startAt);
     gain.gain.linearRampToValueAtTime(volume, startAt + attack);
     gain.gain.exponentialRampToValueAtTime(0.0001, startAt + attack + decay);
 
     osc.start(startAt);
     osc.stop(startAt + attack + decay + 0.05);
-
-    // Cleanup after the note ends
     osc.onended = () => {
-      try { osc.disconnect(); gain.disconnect(); } catch (_e) {}
+      try { osc.disconnect(); gain.disconnect(); } catch { /* ok */ }
     };
   }
 }

@@ -1,8 +1,9 @@
-/* ══════════════════════════════════════════════════════════════════════════════
+/* ═════════════════════════════════════════════════════════════════════════════
    PomoFomo — Timer Tab Stylesheet
-   Theming is driven entirely by data-status on <body>.
-   Never set colors via inline JS — let CSS custom properties do the work.
-   ══════════════════════════════════════════════════════════════════════════════ */
+   Theming is driven entirely by data-status on <body> via custom properties.
+   Character animation lives at the bottom: state classes (dragon--focus,
+   book--idle, …) are toggled on the injected SVG root by character.js.
+   ═════════════════════════════════════════════════════════════════════════════ */
 
 /* ── Fonts (bundled, no network requests) ─────────────────────────────────── */
 @font-face {
@@ -27,10 +28,9 @@
   font-display: block;
 }
 
-/* ── Design tokens — default (idle/focus: warm amber) ────────────────────── */
+/* ── Design tokens — default (idle/focus: warm amber) ─────────────────────── */
 :root {
   --color-bg:          #FFF8EE;
-  --color-bg-soft:     #FFF3E0;
   --color-surface:     #FFFDF7;
   --color-accent:      #F5A623;
   --color-accent-dark: #E8832A;
@@ -38,44 +38,32 @@
   --color-arc-track:   rgba(0, 0, 0, 0.08);
   --color-text:        #3D2B1F;
   --color-muted:       #A08060;
-  --color-btn-primary: #F5A623;
   --color-btn-shadow:  rgba(245, 166, 35, 0.35);
-  --color-dot-done:    #F5A623;
-  --color-dot-current: rgba(245, 166, 35, 0.5);
-
-  --radius-btn: 999px;
-  --shadow-btn: 0 4px 18px var(--color-btn-shadow);
 
   --transition-theme:
     background-color 700ms ease,
     color 600ms ease,
     border-color 600ms ease;
-  --transition-arc: stroke 700ms ease;
 }
 
 /* ── Theme: break (cool teal) ─────────────────────────────────────────────── */
 body[data-status="break"],
 body[data-status="longBreak"] {
   --color-bg:          #EFF9F6;
-  --color-bg-soft:     #E2F5F0;
   --color-surface:     #F5FDFA;
   --color-accent:      #2BBFA0;
   --color-accent-dark: #22A38A;
   --color-arc:         #2BBFA0;
   --color-text:        #1B3D35;
   --color-muted:       #5A8A7E;
-  --color-btn-primary: #2BBFA0;
   --color-btn-shadow:  rgba(43, 191, 160, 0.35);
-  --color-dot-done:    #2BBFA0;
-  --color-dot-current: rgba(43, 191, 160, 0.5);
 }
 
-/* ── Theme: focus-warning (deeper amber — subtle tension) ─────────────────── */
+/* ── Theme: focus-warning (deeper amber — gentle tension) ─────────────────── */
 body[data-status="focus-warning"] {
-  --color-accent:      #E8832A;
-  --color-arc:         #E8832A;
-  --color-btn-primary: #E8832A;
-  --color-btn-shadow:  rgba(232, 131, 42, 0.35);
+  --color-accent:     #E8832A;
+  --color-arc:        #E8832A;
+  --color-btn-shadow: rgba(232, 131, 42, 0.35);
 }
 
 /* ── Reset & base ─────────────────────────────────────────────────────────── */
@@ -85,9 +73,7 @@ body[data-status="focus-warning"] {
   padding: 0;
 }
 
-html {
-  height: 100%;
-}
+html { height: 100%; }
 
 body {
   font-family: 'Nunito', system-ui, -apple-system, sans-serif;
@@ -106,7 +92,6 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
   width: 100%;
   max-width: 420px;
   padding: 40px 24px 48px;
@@ -137,12 +122,12 @@ body {
 }
 
 .session-dot.done {
-  background: var(--color-dot-done);
+  background: var(--color-accent);
   transform: scale(1.05);
 }
 
 .session-dot.current {
-  background: var(--color-dot-current);
+  background: color-mix(in srgb, var(--color-accent) 50%, transparent);
   border-color: var(--color-accent);
   transform: scale(1.15);
 }
@@ -155,7 +140,7 @@ body {
   text-transform: uppercase;
 }
 
-/* ── Timer stage (ring + dragon) ──────────────────────────────────────────── */
+/* ── Timer stage (ring + character) ───────────────────────────────────────── */
 .timer-stage {
   position: relative;
   width: 220px;
@@ -172,28 +157,25 @@ body {
   overflow: visible;
 }
 
-.ring-track {
-  stroke: var(--color-arc-track);
-}
+.ring-track { stroke: var(--color-arc-track); }
 
 .ring-arc {
   stroke: var(--color-arc);
   /* stroke-dasharray is set once by timer.js to the circumference */
-  transition: var(--transition-arc), stroke-dashoffset 1000ms linear;
+  transition: stroke 700ms ease, stroke-dashoffset 1000ms linear;
   will-change: stroke-dashoffset;
 }
 
-/* Dragon lives in the center of the ring */
-.dragon-container {
+.character-container {
   position: absolute;
-  inset: 16px; /* ~8px clearance inside the 8px ring stroke */
+  inset: 16px; /* clearance inside the ring stroke */
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: visible;
 }
 
-.dragon-container svg {
+.character-container svg {
   width: 100%;
   height: 100%;
   overflow: visible;
@@ -203,7 +185,6 @@ body {
 .time-display {
   font-size: clamp(3.5rem, 10vw, 5rem);
   font-weight: 800;
-  color: var(--color-text);
   letter-spacing: -0.02em;
   line-height: 1;
   margin-bottom: 12px;
@@ -211,9 +192,7 @@ body {
   transition: color 700ms ease;
 }
 
-body[data-paused="true"] .time-display {
-  opacity: 0.55;
-}
+body[data-paused="true"] .time-display { opacity: 0.55; }
 
 /* ── Status label ─────────────────────────────────────────────────────────── */
 .status-label {
@@ -221,7 +200,6 @@ body[data-paused="true"] .time-display {
   font-weight: 700;
   color: var(--color-muted);
   margin-bottom: 36px;
-  letter-spacing: 0.01em;
   text-align: center;
   transition: color 700ms ease;
   min-height: 1.4em;
@@ -234,33 +212,27 @@ body[data-paused="true"] .time-display {
   align-items: center;
   gap: 14px;
   width: 100%;
-}
-
-.controls-secondary {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: center;
+  min-height: 84px; /* keep layout stable as buttons come and go */
 }
 
 .btn {
-  font-family: 'Nunito', system-ui, sans-serif;
+  font-family: inherit;
   font-weight: 700;
   font-size: 1rem;
-  border-radius: var(--radius-btn);
+  border-radius: 999px;
   border: none;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition:
-    transform 120ms ease,
-    box-shadow 120ms ease,
-    background-color 300ms ease,
-    opacity 200ms ease;
   user-select: none;
   -webkit-user-select: none;
+  transition:
+    transform 120ms ease,
+    box-shadow 300ms ease,
+    background-color 300ms ease,
+    color 300ms ease,
+    border-color 300ms ease;
 }
 
 .btn:focus-visible {
@@ -268,21 +240,15 @@ body[data-paused="true"] .time-display {
   outline-offset: 3px;
 }
 
-.btn:active {
-  transform: scale(0.96);
-}
+.btn:active { transform: scale(0.96); }
 
 .btn-primary {
-  background: var(--color-btn-primary);
+  background: var(--color-accent);
   color: white;
   padding: 14px 48px;
   font-size: 1.1rem;
-  box-shadow: var(--shadow-btn);
   min-width: 180px;
-  transition:
-    background-color 300ms ease,
-    box-shadow 300ms ease,
-    transform 120ms ease;
+  box-shadow: 0 4px 18px var(--color-btn-shadow);
 }
 
 .btn-primary:hover {
@@ -290,53 +256,23 @@ body[data-paused="true"] .time-display {
   transform: translateY(-1px);
 }
 
-.btn-ghost {
-  background: transparent;
-  color: var(--color-muted);
-  border: 2px solid currentColor;
-  padding: 10px 22px;
-  font-size: 0.9rem;
-  transition:
-    color 300ms ease,
-    border-color 300ms ease,
-    transform 120ms ease,
-    opacity 200ms ease;
-}
-
-.btn-ghost:hover {
-  color: var(--color-accent);
-}
-
-.btn-stop {
-  color: var(--color-muted);
-  opacity: 0.7;
-}
-
-/* ── Snooze button: warm, soft, secondary — "just a little longer" ───────── */
+/* Snooze: warm, soft, secondary — "just a little longer" */
 .btn-snooze {
-  background: rgba(245, 166, 35, 0.12);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
   color: var(--color-accent-dark);
   border: 2px solid var(--color-accent);
   padding: 12px 32px;
-  font-size: 1rem;
   min-width: 180px;
 }
 
-body[data-status="focus-warning"] .btn-snooze {
-  background: rgba(232, 131, 42, 0.1);
-  color: var(--color-accent-dark);
-  border-color: var(--color-accent);
-}
-
 .btn-snooze:hover {
-  background: rgba(245, 166, 35, 0.22);
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
   transform: translateY(-1px);
 }
 
-/* ── Stop link: ultra-subtle text link — parent escape hatch ─────────────── */
-/* Intentionally low-contrast so it's available but doesn't tempt kids       */
+/* Stop: ultra-subtle text link — an escape hatch, not a temptation */
 .btn-stop-link {
-  font-family: 'Nunito', system-ui, sans-serif;
+  font-family: inherit;
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--color-muted);
@@ -349,14 +285,9 @@ body[data-status="focus-warning"] .btn-snooze {
   opacity: 0.45;
   padding: 4px 8px;
   border-radius: 4px;
-  transition:
-    opacity 250ms ease,
-    color 250ms ease,
-    text-decoration-color 250ms ease,
-    transform 120ms ease;
+  transition: opacity 250ms ease, color 250ms ease, text-decoration-color 250ms ease;
   user-select: none;
   -webkit-user-select: none;
-  letter-spacing: 0.01em;
 }
 
 .btn-stop-link:hover {
@@ -371,10 +302,6 @@ body[data-status="focus-warning"] .btn-snooze {
   opacity: 0.9;
 }
 
-.btn-stop-link:active {
-  transform: scale(0.97);
-}
-
 /* ── Break banner ─────────────────────────────────────────────────────────── */
 .break-banner {
   position: fixed;
@@ -383,22 +310,20 @@ body[data-status="focus-warning"] .btn-snooze {
   right: 0;
   padding: 20px 24px 18px;
   background: var(--color-surface);
-  border-bottom: 2px solid rgba(0,0,0,0.06);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.06);
   text-align: center;
   transition: var(--transition-theme);
   z-index: 10;
 }
 
-.break-banner[hidden] {
-  display: none;
-}
+.break-banner[hidden] { display: none; }
 
 .break-banner__title {
   font-size: 1.4rem;
   font-weight: 800;
   color: var(--color-accent);
-  transition: color 700ms ease;
   line-height: 1.2;
+  transition: color 700ms ease;
 }
 
 .break-banner__subtitle {
@@ -421,26 +346,45 @@ body[data-paused="true"] .timer-stage::after {
   z-index: 5;
 }
 
-/* ══════════════════════════════════════════════════════════════════════════════
-   DRAGON ANIMATIONS
-   All keyframes and state-driven class rules live here.
-   The dragon SVG root has class="dragon" and state classes are toggled by dragon.js.
-   ══════════════════════════════════════════════════════════════════════════════ */
+/* ═════════════════════════════════════════════════════════════════════════════
+   SHARED CHARACTER KEYFRAMES
+   ═════════════════════════════════════════════════════════════════════════════ */
 
-/* ── Dragon root element ─────────────────────────────────────────────────── */
-.dragon {
-  overflow: visible;
-}
-
-/* ── Shared: always-on floating breathe for every active state ────────────── */
 @keyframes breathe {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-5px); }
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
 }
 
-/* ── Shared: eyelid blink ─────────────────────────────────────────────────── */
-/* Eyelids use transform: scaleY() with transform-origin top.
-   transform-box: fill-box ensures the origin is relative to the element itself. */
+@keyframes tired-sway {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  30%      { transform: translateY(-2px) rotate(-1.5deg); }
+  70%      { transform: translateY(-1px) rotate(1deg); }
+}
+
+@keyframes zzz-float {
+  0%   { opacity: 0; transform: translateY(0); }
+  15%  { opacity: 1; }
+  85%  { opacity: 0.8; }
+  100% { opacity: 0; transform: translateY(-20px); }
+}
+
+.zzz-small,
+.zzz-medium,
+.zzz-large {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   DRAGON — "Ember"
+   State classes on the SVG root: dragon--idle, dragon--focus, dragon--focus-
+   tired, dragon--focus-sleeping, dragon--break-start, dragon--break-active,
+   dragon--break-done.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.dragon { overflow: visible; }
+
+/* Eyelids: scaleY(0) = open, scaleY(1) = closed. Origin at the lid top. */
 .dragon__eyelid-left,
 .dragon__eyelid-right {
   transform-origin: center top;
@@ -462,46 +406,65 @@ body[data-paused="true"] .timer-stage::after {
 
 @keyframes droop {
   0%, 100% { transform: scaleY(0.45); }
-  50%       { transform: scaleY(0.65); }
+  50%      { transform: scaleY(0.65); }
 }
 
-/* ── State: idle ──────────────────────────────────────────────────────────── */
-.dragon--idle .dragon__root {
-  animation: breathe 4.5s ease-in-out infinite;
+/* Pupils drift down toward the book while reading */
+.dragon__pupil-left,
+.dragon__pupil-right {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 800ms ease;
 }
 
+.dragon--focus .dragon__pupil-left,
+.dragon--focus .dragon__pupil-right,
+.dragon--focus-tired .dragon__pupil-left,
+.dragon--focus-tired .dragon__pupil-right {
+  transform: translate(1px, 2px);
+}
+
+/* Tail idle sway — subtle life in every calm state */
+@keyframes tail-sway {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(4deg); }
+}
+
+.dragon__tail {
+  transform-origin: 15% 40%;
+  transform-box: fill-box;
+}
+
+/* ── idle ─────────────────────────────────────────────────────────────────── */
+.dragon--idle .dragon__root { animation: breathe 4.5s ease-in-out infinite; }
+.dragon--idle .dragon__tail { animation: tail-sway 4.5s ease-in-out infinite; }
 .dragon--idle .dragon__eyelid-left,
-.dragon--idle .dragon__eyelid-right {
-  animation: blink-slow 6s ease-in-out infinite;
-}
+.dragon--idle .dragon__eyelid-right { animation: blink-slow 6s ease-in-out infinite; }
 
-/* ── State: focus ─────────────────────────────────────────────────────────── */
-.dragon--focus .dragon__root {
-  animation: breathe 3.5s ease-in-out infinite;
-}
-
+/* ── focus ────────────────────────────────────────────────────────────────── */
+.dragon--focus .dragon__root { animation: breathe 3.5s ease-in-out infinite; }
+.dragon--focus .dragon__tail { animation: tail-sway 3.5s ease-in-out infinite; }
 .dragon--focus .dragon__eyelid-left,
-.dragon--focus .dragon__eyelid-right {
-  animation: blink-normal 8s ease-in-out infinite;
-}
+.dragon--focus .dragon__eyelid-right { animation: blink-normal 8s ease-in-out infinite; }
 
-/* ── State: focus-tired ───────────────────────────────────────────────────── */
-@keyframes tired-sway {
-  0%, 100% { transform: translateY(0px) rotate(0deg); }
-  30%       { transform: translateY(-2px) rotate(-1.5deg); }
-  70%       { transform: translateY(-1px) rotate(1deg); }
-}
-
-.dragon--focus-tired .dragon__root {
-  animation: tired-sway 4s ease-in-out infinite;
-}
-
+/* ── focus-tired ──────────────────────────────────────────────────────────── */
+.dragon--focus-tired .dragon__root { animation: tired-sway 4s ease-in-out infinite; }
 .dragon--focus-tired .dragon__eyelid-left,
-.dragon--focus-tired .dragon__eyelid-right {
-  animation: droop 3s ease-in-out infinite;
+.dragon--focus-tired .dragon__eyelid-right { animation: droop 3s ease-in-out infinite; }
+
+/* ── focus-sleeping (final seconds of the warning) ─────────────────────────── */
+.dragon--focus-sleeping .dragon__root { animation: tired-sway 5s ease-in-out infinite; }
+.dragon--focus-sleeping .dragon__eyelid-left,
+.dragon--focus-sleeping .dragon__eyelid-right {
+  animation: none;
+  transform: scaleY(1); /* lids fully down */
 }
 
-/* ── State: break-start ───────────────────────────────────────────────────── */
+.dragon--focus-sleeping .zzz-small  { animation: zzz-float 2.2s ease-in-out 0s   infinite; }
+.dragon--focus-sleeping .zzz-medium { animation: zzz-float 2.2s ease-in-out 0.7s infinite; }
+.dragon--focus-sleeping .zzz-large  { animation: zzz-float 2.2s ease-in-out 1.4s infinite; }
+
+/* ── break-start (one-shot celebration) ────────────────────────────────────── */
 @keyframes jump {
   0%   { transform: translateY(0) scale(1); }
   25%  { transform: translateY(-22px) scale(1.04, 0.97); }
@@ -512,14 +475,14 @@ body[data-paused="true"] .timer-stage::after {
 
 @keyframes wing-left-spread {
   0%, 100% { transform: rotate(0deg) scaleX(1); }
-  40%       { transform: rotate(-25deg) scaleX(1.3); }
-  70%       { transform: rotate(-18deg) scaleX(1.2); }
+  40%      { transform: rotate(-25deg) scaleX(1.3); }
+  70%      { transform: rotate(-18deg) scaleX(1.2); }
 }
 
 @keyframes wing-right-spread {
   0%, 100% { transform: rotate(0deg) scaleX(1); }
-  40%       { transform: rotate(25deg) scaleX(1.3); }
-  70%       { transform: rotate(18deg) scaleX(1.2); }
+  40%      { transform: rotate(25deg) scaleX(1.3); }
+  70%      { transform: rotate(18deg) scaleX(1.2); }
 }
 
 @keyframes sparkle-burst {
@@ -545,48 +508,61 @@ body[data-paused="true"] .timer-stage::after {
   animation: wing-right-spread 650ms ease-out forwards;
 }
 
-/* ── State: break-active ──────────────────────────────────────────────────── */
+/* ── break-active ─────────────────────────────────────────────────────────── */
 @keyframes playful-bob {
   0%, 100% { transform: translateY(0) rotate(0deg); }
-  25%       { transform: translateY(-7px) rotate(-2deg); }
-  75%       { transform: translateY(-4px) rotate(2.5deg); }
+  25%      { transform: translateY(-7px) rotate(-2deg); }
+  75%      { transform: translateY(-4px) rotate(2.5deg); }
 }
 
 @keyframes tail-wag {
   0%, 100% { transform: rotate(0deg); }
-  33%       { transform: rotate(18deg); }
-  66%       { transform: rotate(-12deg); }
+  33%      { transform: rotate(14deg); }
+  66%      { transform: rotate(-9deg); }
+}
+
+@keyframes wing-flutter-left {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(-7deg); }
+}
+
+@keyframes wing-flutter-right {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(7deg); }
 }
 
 @keyframes butterfly-flutter {
   0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  25%       { transform: translate(5px, -9px) rotate(5deg); }
-  50%       { transform: translate(10px, -4px) rotate(-3deg); }
-  75%       { transform: translate(6px, -11px) rotate(4deg); }
+  25%      { transform: translate(5px, -9px) rotate(5deg); }
+  50%      { transform: translate(10px, -4px) rotate(-3deg); }
+  75%      { transform: translate(6px, -11px) rotate(4deg); }
 }
 
-.dragon--break-active .dragon__root {
-  animation: playful-bob 2.2s ease-in-out infinite;
-}
+.dragon--break-active .dragon__root { animation: playful-bob 2.2s ease-in-out infinite; }
+.dragon--break-active .dragon__tail { animation: tail-wag 1.3s ease-in-out infinite; }
 
-.dragon--break-active .dragon__tail {
-  transform-origin: 20% 50%;
+.dragon--break-active .dragon__wing-left {
+  transform-origin: right center;
   transform-box: fill-box;
-  animation: tail-wag 1.3s ease-in-out infinite;
+  animation: wing-flutter-left 1.1s ease-in-out infinite;
+}
+
+.dragon--break-active .dragon__wing-right {
+  transform-origin: left center;
+  transform-box: fill-box;
+  animation: wing-flutter-right 1.1s ease-in-out infinite;
 }
 
 .dragon--break-active .dragon__eyelid-left,
-.dragon--break-active .dragon__eyelid-right {
-  animation: blink-slow 5s ease-in-out infinite;
-}
+.dragon--break-active .dragon__eyelid-right { animation: blink-slow 5s ease-in-out infinite; }
 
-/* ── State: break-done ────────────────────────────────────────────────────── */
+/* ── break-done (brief "ready!" pose between break and next session) ───────── */
 @keyframes ready-bounce {
-  0%, 100%  { transform: translateY(0) scale(1); }
-  20%        { transform: translateY(-12px) scale(1.03, 0.97); }
-  40%        { transform: translateY(0) scale(0.98, 1.02); }
-  60%        { transform: translateY(-6px) scale(1.02); }
-  80%        { transform: translateY(0) scale(1); }
+  0%, 100% { transform: translateY(0) scale(1); }
+  20%      { transform: translateY(-12px) scale(1.03, 0.97); }
+  40%      { transform: translateY(0) scale(0.98, 1.02); }
+  60%      { transform: translateY(-6px) scale(1.02); }
+  80%      { transform: translateY(0) scale(1); }
 }
 
 .dragon--break-done .dragon__root {
@@ -594,14 +570,9 @@ body[data-paused="true"] .timer-stage::after {
 }
 
 .dragon--break-done .dragon__eyelid-left,
-.dragon--break-done .dragon__eyelid-right {
-  animation: blink-normal 7s ease-in-out infinite;
-}
+.dragon--break-done .dragon__eyelid-right { animation: blink-normal 7s ease-in-out infinite; }
 
-/* ── Accessory + sparkle + ZZZ visibility ────────────────────────────────── */
-/* Everything hidden by default — each state opts in explicitly.
-   This prevents the book flashing visible during the brief window
-   before the SW state is applied on load/reload. */
+/* ── Accessory visibility — hidden unless a state opts in ─────────────────── */
 .dragon__accessory--book,
 .dragon__accessory--butterfly,
 .dragon__sparkles,
@@ -609,158 +580,83 @@ body[data-paused="true"] .timer-stage::after {
   display: none;
 }
 
-/* Book: shown during all focus variants */
 .dragon--focus          .dragon__accessory--book,
 .dragon--focus-tired    .dragon__accessory--book,
-.dragon--focus-sleeping .dragon__accessory--book {
-  display: block;
-}
+.dragon--focus-sleeping .dragon__accessory--book { display: block; }
 
-/* Butterfly: shown during break-active */
 .dragon--break-active .dragon__accessory--butterfly {
   display: block;
   animation: butterfly-flutter 3.5s ease-in-out infinite;
 }
 
-/* Sparkles: shown during break-start celebration */
 .dragon--break-start .dragon__sparkles {
   display: block;
   animation: sparkle-burst 700ms ease-out forwards;
 }
 
-/* ZZZ: shown during focus-sleeping (last 10 seconds) */
-.dragon--focus-sleeping .dragon__zzz {
-  display: block;
-}
+.dragon--focus-sleeping .dragon__zzz { display: block; }
 
-/* ── State: focus-sleeping (last 10 seconds of focus-warning) ────────────── */
-.dragon--focus-sleeping .dragon__root {
-  animation: tired-sway 5s ease-in-out infinite;
-}
+/* ═════════════════════════════════════════════════════════════════════════════
+   BOOK — "Page"
+   State classes: book--idle, book--focus, … JS drives #book__stack-left /
+   #book__stack-right widths and shelf-book visibility (character.js).
+   ═════════════════════════════════════════════════════════════════════════════ */
 
-/* Eyes fully closed — override the eyelid blink animations */
-.dragon--focus-sleeping .dragon__eyelid-left,
-.dragon--focus-sleeping .dragon__eyelid-right {
-  animation: none;
-  transform: scaleY(1); /* lid fully down */
-}
-
-/* ZZZ float up and fade, staggered */
-@keyframes zzz-float {
-  0%   { opacity: 0; transform: translateY(0px);   }
-  15%  { opacity: 1;                               }
-  85%  { opacity: 0.8;                             }
-  100% { opacity: 0; transform: translateY(-20px); }
-}
-
-.zzz-small,
-.zzz-medium,
-.zzz-large {
-  transform-box: fill-box;
-  transform-origin: center bottom;
-}
-
-.dragon--focus-sleeping .zzz-small  { animation: zzz-float 2.2s ease-in-out 0s    infinite; }
-.dragon--focus-sleeping .zzz-medium { animation: zzz-float 2.2s ease-in-out 0.7s  infinite; }
-.dragon--focus-sleeping .zzz-large  { animation: zzz-float 2.2s ease-in-out 1.4s  infinite; }
-
-/* ══════════════════════════════════════════════════════════════════════════════
-   BOOK CHARACTER
-   The book SVG root has class="book"; state classes are toggled by book.js.
-   JS-driven elements: #book__bookmark (transform) and #book__page-edge (width/x).
-   ══════════════════════════════════════════════════════════════════════════════ */
-
-/* ── Container — mirrors .dragon-container ───────────────────────────────── */
-.book-container {
-  position: absolute;
-  inset: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: visible;
-}
-
-.book-container svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-/* ── Default visibility ───────────────────────────────────────────────────── */
-/* Closed book shown by default; open book, ZZZ, and shelf hidden */
-.book .book__open    { display: none; }
-.book .book__closed  { display: block; }
-.book .book__zzz     { display: none; }
-.book #book__shelf   { display: none; }
-
-/* Page stacks are inside book__root (so they're hidden during breaks when
-   book__root is display:none). Hide them explicitly during non-focus states
-   (e.g. idle, closed book). JS drives their width/x attributes. */
+/* Default visibility: closed book only */
+.book .book__open   { display: none; }
+.book .book__closed { display: block; }
+.book .book__zzz    { display: none; }
+.book #book__shelf  { display: none; }
 .book #book__stack-left,
 .book #book__stack-right { display: none; }
 
-/* Session books 2-4 hidden by default — JS shows by sessionNumber */
+/* Shelf books 2–4 hidden until earned (JS shows by sessionNumber) */
 .shelf-book--2,
 .shelf-book--3,
 .shelf-book--4 { display: none; }
 
-/* ── Focus states: open book visible ─────────────────────────────────────── */
+/* Focus states: open book + page stacks */
 .book--focus          .book__open,
 .book--focus-tired    .book__open,
-.book--focus-sleeping .book__open {
-  display: block;
-}
+.book--focus-sleeping .book__open { display: block; }
+
 .book--focus          .book__closed,
 .book--focus-tired    .book__closed,
-.book--focus-sleeping .book__closed {
-  display: none;
-}
+.book--focus-sleeping .book__closed { display: none; }
+
 .book--focus          #book__stack-left,
 .book--focus-tired    #book__stack-left,
 .book--focus-sleeping #book__stack-left,
 .book--focus          #book__stack-right,
 .book--focus-tired    #book__stack-right,
-.book--focus-sleeping #book__stack-right {
-  display: block;
-}
+.book--focus-sleeping #book__stack-right { display: block; }
 
-/* ZZZ: only during focus-sleeping */
 .book--focus-sleeping .book__zzz { display: block; }
 
-/* ── Break states: shelf scene (book__root hidden) ───────────────────────── */
+/* Break states: shelf scene replaces the book */
 .book--break-active .book__root,
-.book--break-done   .book__root {
-  display: none;
-}
+.book--break-done   .book__root { display: none; }
 .book--break-active #book__shelf,
-.book--break-done   #book__shelf {
-  display: block;
-}
+.book--break-done   #book__shelf { display: block; }
 
-/* ── State: idle — closed book gentle bob ────────────────────────────────── */
-.book--idle .book__root {
-  animation: breathe 4.5s ease-in-out infinite;
-}
+/* ── idle ─────────────────────────────────────────────────────────────────── */
+.book--idle .book__root { animation: breathe 4.5s ease-in-out infinite; }
 
-/* ── Page-turn animation (oblique view) ──────────────────────────────────── */
-/* .book__page-turn is a polygon covering the right page face.
-   With transform-origin: left center (at the spine) + transform-box: fill-box,
-   scaleX(1)  = page lies on right side  (unread pile)
-   scaleX(0)  = page edge-on at the spine
-   scaleX(-1) = page mirrored onto left side (read pile)
-   The element starts and ends at opacity:0 so it only shows during the flip. */
+/* ── Page-turn (oblique view) ─────────────────────────────────────────────── */
+/* .book__page-turn covers the right page face. With the origin at the spine,
+   scaleX 1 → 0 → -1 arcs the page over onto the left side. The element is
+   transparent at both ends of the cycle so it only shows mid-flip. */
 @keyframes oblique-page-flip {
   0%   { transform: scaleX(1);  opacity: 0; }
-  3%   { opacity: 0.9;                      }  /* appear on right page */
-  45%  { transform: scaleX(0);              }  /* arc over spine */
-  55%  { transform: scaleX(-1);             }  /* land on left page */
-  88%  { opacity: 0.5;                      }
-  98%  { transform: scaleX(-1); opacity: 0; }  /* fade out */
-  99%  { transform: scaleX(1);  opacity: 0; }  /* snap back while hidden */
+  3%   { opacity: 0.9; }
+  45%  { transform: scaleX(0); }
+  55%  { transform: scaleX(-1); }
+  88%  { opacity: 0.5; }
+  98%  { transform: scaleX(-1); opacity: 0; }
+  99%  { transform: scaleX(1);  opacity: 0; }
   100% { transform: scaleX(1);  opacity: 0; }
 }
 
-/* Shared transform properties for all focus-state page-turn animations */
 .book--focus          .book__page-turn,
 .book--focus-tired    .book__page-turn,
 .book--focus-sleeping .book__page-turn {
@@ -768,42 +664,22 @@ body[data-paused="true"] .timer-stage::after {
   transform-box: fill-box;
 }
 
-/* ── State: focus — open book, slow page turn ────────────────────────────── */
-.book--focus .book__root {
-  animation: breathe 4s ease-in-out infinite;
-}
+.book--focus .book__root { animation: breathe 4s ease-in-out infinite; }
+.book--focus .book__page-turn { animation: oblique-page-flip 6s ease-in-out infinite; }
 
-.book--focus .book__page-turn {
-  animation: oblique-page-flip 6s ease-in-out infinite;
-}
+.book--focus-tired .book__root { animation: tired-sway 4s ease-in-out infinite; }
+.book--focus-tired .book__page-turn { animation: oblique-page-flip 3.5s ease-in-out infinite; }
 
-/* ── State: focus-tired — faster page turn + tired-sway on root ──────────── */
-.book--focus-tired .book__root {
-  animation: tired-sway 4s ease-in-out infinite;
-}
+.book--focus-sleeping .book__root { animation: tired-sway 5s ease-in-out infinite; }
+.book--focus-sleeping .book__page-turn { animation: oblique-page-flip 12s ease-in-out infinite; }
 
-.book--focus-tired .book__page-turn {
-  animation: oblique-page-flip 3.5s ease-in-out infinite;
-}
+.book--focus-sleeping .zzz-small  { animation: zzz-float 2.2s ease-in-out 0s   infinite; }
+.book--focus-sleeping .zzz-medium { animation: zzz-float 2.2s ease-in-out 0.7s infinite; }
+.book--focus-sleeping .zzz-large  { animation: zzz-float 2.2s ease-in-out 1.4s infinite; }
 
-/* ── State: focus-sleeping — pages barely move + ZZZ floats ──────────────── */
-/* Reuses zzz-float keyframe defined in the dragon section above */
-.book--focus-sleeping .book__root {
-  animation: tired-sway 5s ease-in-out infinite;
-}
-
-.book--focus-sleeping .book__page-turn {
-  animation: oblique-page-flip 12s ease-in-out infinite;
-}
-
-/* Reuse existing zzz-small/medium/large transform-box rules from dragon section */
-.book--focus-sleeping .zzz-small  { animation: zzz-float 2.2s ease-in-out 0s    infinite; }
-.book--focus-sleeping .zzz-medium { animation: zzz-float 2.2s ease-in-out 0.7s  infinite; }
-.book--focus-sleeping .zzz-large  { animation: zzz-float 2.2s ease-in-out 1.4s  infinite; }
-
-/* ── State: break-start — book flies upward off screen ───────────────────── */
+/* ── break-start: book flies up and away ──────────────────────────────────── */
 @keyframes book-fly-out {
-  0%   { transform: translateY(0)    rotate(0deg);   opacity: 1; }
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
   25%  { transform: translateY(-18px) rotate(-5deg); opacity: 1; }
   100% { transform: translateY(-220px) rotate(15deg); opacity: 0; }
 }
@@ -812,14 +688,41 @@ body[data-paused="true"] .timer-stage::after {
   animation: book-fly-out 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
-/* ── State: break-active — sparkle pulses above shelf ────────────────────── */
+/* ── break-active: sparkle pulses above the shelf ─────────────────────────── */
 @keyframes sparkle-pulse {
   0%, 100% { opacity: 0.55; transform: scale(0.85); }
-  50%       { opacity: 1;   transform: scale(1.18); }
+  50%      { opacity: 1; transform: scale(1.18); }
 }
 
 .book--break-active .book__sparkle {
   transform-box: fill-box;
   transform-origin: center;
   animation: sparkle-pulse 2s ease-in-out infinite;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   REDUCED MOTION
+   Keep slow breathing and blinking (they're calm), drop everything springy.
+   ═════════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .ring-arc { transition: stroke 700ms ease; }
+
+  .dragon--break-start .dragon__root,
+  .dragon--break-start .dragon__wing-left,
+  .dragon--break-start .dragon__wing-right,
+  .dragon--break-active .dragon__root,
+  .dragon--break-active .dragon__tail,
+  .dragon--break-active .dragon__wing-left,
+  .dragon--break-active .dragon__wing-right,
+  .dragon--break-done .dragon__root,
+  .dragon--break-active .dragon__accessory--butterfly,
+  .book--break-start .book__root,
+  .book--break-active .book__sparkle,
+  .book--focus .book__page-turn,
+  .book--focus-tired .book__page-turn,
+  .book--focus-sleeping .book__page-turn {
+    animation: none;
+  }
+
+  .book--break-start .book__root { opacity: 0; } /* still ends hidden */
 }
