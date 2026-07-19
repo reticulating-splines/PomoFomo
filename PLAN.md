@@ -55,9 +55,12 @@ PomoFomo/
 - **Persistent pinned tab** (`timer.html`) is the main experience. The SW finds
   it by URL (`tabs.query`, no stored tab id), prunes duplicates, and re-creates
   it if closed (unless the whole window is closing).
-- **Popup** is a mini remote control: status chip + settings panel (gear icon
+- **Popup** is a mini remote control: status chip + "This week" per-day
+  session bars (rendered from the SW's log) + settings panel (gear icon
   slides in settings view) + quiet parent controls (pause / skip / stop).
   Stays live while open via the same storage subscription.
+- **Toolbar badge** shows minutes remaining ("14m"), phase-colored, refreshed
+  by a 1-minute alarm; frozen while paused, empty at idle.
 - **No content script** — no overlay injection. Break alert = tab focus switch. Games pause naturally when tab loses focus (Page Visibility API).
 - **Two-stage break alert:**
   1. `focus-warning` (~2 min before): dragon goes tired, favicon pulses, soft chime
@@ -113,6 +116,7 @@ PomoFomo/
 | `break-end`      | Break complete                           |
 | `snooze-end`     | 5 min after snooze                       |
 | `nag`            | Every 30 s during breaks (if enabled)    |
+| `badge-tick`     | Every minute while running — refreshes the toolbar minutes badge |
 
 ## Message Types (timer.js / popup.js → background.js)
 User actions only — state flows back through `chrome.storage.onChanged`:

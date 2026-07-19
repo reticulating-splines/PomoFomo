@@ -5,6 +5,7 @@ export const ALARM = {
   BREAK_END:     'break-end',      // fires when break completes
   SNOOZE_END:    'snooze-end',     // fires SNOOZE_MINUTES after snooze
   NAG:           'nag',            // repeating: re-focus timer tab during break
+  BADGE_TICK:    'badge-tick',     // repeating: refresh toolbar badge minutes
 };
 
 // ── Timer status values ──────────────────────────────────────────────────────

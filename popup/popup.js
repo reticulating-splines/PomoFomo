@@ -25,6 +25,8 @@ const btnPauseResume = document.getElementById('btnPauseResume');
 const btnSkip        = document.getElementById('btnSkip');
 const btnStop        = document.getElementById('btnStop');
 const settingsForm   = document.getElementById('settingsForm');
+const statsTotal     = document.getElementById('statsTotal');
+const statsBars      = document.getElementById('statsBars');
 
 const inputs = {
   focus:    document.getElementById('sFocusMin'),
@@ -79,6 +81,7 @@ function render(state) {
   statusIcon.textContent = phaseIcon(state);
   renderTime(state);
   renderDots(state);
+  renderStats(state);
 
   const isIdle = state.status === STATUS.IDLE;
   btnQuickStart.hidden = !isIdle;
@@ -121,6 +124,68 @@ function renderDots(state) {
       return dot;
     }),
   );
+}
+
+// ── This week (from the SW's session log) ────────────────────────────────────
+const DAY_MS = 24 * 60 * 60 * 1000;
+const BAR_MAX_PX = 34;
+const BAR_MIN_PX = 10;
+
+function renderStats(state) {
+  const logs = Array.isArray(state.logs) ? state.logs : [];
+
+  // Last 7 calendar days, oldest first, today last
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const start = new Date(today.getTime() - (6 - i) * DAY_MS);
+    return {
+      start: start.getTime(),
+      label: start.toLocaleDateString(undefined, { weekday: 'narrow' }),
+      isToday: i === 6,
+      count: 0,
+      minutes: 0,
+    };
+  });
+
+  for (const entry of logs) {
+    if (entry.type !== 'focus' || !entry.endedAt) continue;
+    const day = days.find(d => entry.endedAt >= d.start && entry.endedAt < d.start + DAY_MS);
+    if (!day) continue;
+    day.count++;
+    const ms = entry.startedAt ? entry.endedAt - entry.startedAt : entry.scheduledDuration ?? 0;
+    day.minutes += Math.round(ms / 60000);
+  }
+
+  const totalCount = days.reduce((n, d) => n + d.count, 0);
+  const totalMinutes = days.reduce((n, d) => n + d.minutes, 0);
+  statsTotal.textContent = totalCount
+    ? `${totalCount} session${totalCount === 1 ? '' : 's'} · ${formatMinutes(totalMinutes)}`
+    : 'No sessions yet';
+
+  const max = Math.max(1, ...days.map(d => d.count));
+  statsBars.replaceChildren(...days.map(day => {
+    const col = document.createElement('div');
+    col.className = 'stats-col' + (day.isToday ? ' today' : '');
+    col.title = `${day.count} session${day.count === 1 ? '' : 's'}`;
+
+    const bar = document.createElement('div');
+    bar.className = 'stats-bar' + (day.count ? '' : ' zero');
+    bar.style.height = day.count
+      ? `${BAR_MIN_PX + (BAR_MAX_PX - BAR_MIN_PX) * (day.count / max)}px`
+      : '3px';
+
+    const label = document.createElement('span');
+    label.className = 'day-label';
+    label.textContent = day.label;
+
+    col.append(bar, label);
+    return col;
+  }));
+}
+
+function formatMinutes(min) {
+  return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min}m`;
 }
 
 // ── Settings form ────────────────────────────────────────────────────────────

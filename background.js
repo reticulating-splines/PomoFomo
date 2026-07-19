@@ -55,6 +55,7 @@ async function handleInstalled(details) {
     const existing = await chrome.storage.sync.get(Object.keys(DEFAULT_SETTINGS));
     await chrome.storage.sync.set({ ...DEFAULT_SETTINGS, ...existing });
   }
+  await refreshActionUi();
   await ensureTimerTab();
 }
 
@@ -66,7 +67,7 @@ async function handleStartup() {
   } else {
     await chrome.alarms.clearAll();
     await setState(phaseSnapshot({ status: STATUS.IDLE, sessionNumber: 1 }));
-    await updateActionIcon(STATUS.IDLE);
+    await refreshActionUi();
   }
 
   await ensureTimerTab();
@@ -97,7 +98,8 @@ async function reconcileAlarms() {
     } else if (state.status === STATUS.FOCUS) {
       await setState({ status: STATUS.FOCUS_WARNING });
     }
-    await updateActionIcon((await getState()).status);
+    await ensureBadgeTick();
+    await refreshActionUi();
   } else {
     // break / longBreak
     if (now >= phaseEnd) {
@@ -106,7 +108,8 @@ async function reconcileAlarms() {
     }
     await chrome.alarms.create(ALARM.BREAK_END, { when: phaseEnd });
     await ensureNagAlarm();
-    await updateActionIcon(state.status);
+    await ensureBadgeTick();
+    await refreshActionUi();
   }
 }
 
@@ -119,7 +122,7 @@ async function handleAlarm(alarm) {
     case ALARM.FOCUS_WARNING:
       if (state.status !== STATUS.FOCUS) return; // stale alarm guard
       await setState({ status: STATUS.FOCUS_WARNING });
-      await updateActionIcon(STATUS.FOCUS_WARNING);
+      await refreshActionUi();
       break;
 
     case ALARM.FOCUS_END:
@@ -140,6 +143,10 @@ async function handleAlarm(alarm) {
       }
       break;
     }
+
+    case ALARM.BADGE_TICK:
+      await updateBadge(state);
+      break;
   }
 }
 
@@ -174,7 +181,8 @@ async function startFocus(sessionNumber) {
   }));
 
   await scheduleFocusAlarms(now + duration);
-  await updateActionIcon(STATUS.FOCUS);
+  await ensureBadgeTick();
+  await refreshActionUi();
 }
 
 async function scheduleFocusAlarms(phaseEnd) {
@@ -213,7 +221,8 @@ async function startBreak({ natural }) {
 
   await chrome.alarms.create(ALARM.BREAK_END, { when: now + breakMinutes * MINUTE });
   await ensureNagAlarm();
-  await updateActionIcon(breakStatus);
+  await ensureBadgeTick();
+  await refreshActionUi();
   await activateTimerTab();
   await showBreakNotification(isLong, breakMinutes);
 }
@@ -239,7 +248,7 @@ async function finishBreak({ natural }) {
 async function stopTimer() {
   await chrome.alarms.clearAll();
   await setState(phaseSnapshot({ status: STATUS.IDLE, sessionNumber: 1 }));
-  await updateActionIcon(STATUS.IDLE);
+  await refreshActionUi();
 }
 
 // ── Message handler (user actions from timer tab / popup) ────────────────────
@@ -258,6 +267,7 @@ async function handleMessage(msg) {
       const remaining = Math.max(0, state.startTime + state.phaseDuration - Date.now());
       await chrome.alarms.clearAll();
       await setState({ isPaused: true, pausedRemaining: remaining });
+      await refreshActionUi(); // badge freezes at the paused minutes
       break;
     }
 
@@ -277,6 +287,8 @@ async function handleMessage(msg) {
       } else {
         await scheduleFocusAlarms(phaseEnd);
       }
+      await ensureBadgeTick();
+      await refreshActionUi();
       break;
     }
 
@@ -309,7 +321,7 @@ async function handleMessage(msg) {
       await chrome.alarms.create(ALARM.FOCUS_WARNING, {
         when: newEnd - WARNING_MINUTES * MINUTE,
       });
-      await updateActionIcon(STATUS.FOCUS);
+      await refreshActionUi();
       break;
     }
 
@@ -420,7 +432,7 @@ async function handleStorageChanged(changes, area) {
   }
 }
 
-// ── Toolbar icon (colored dot per phase) ─────────────────────────────────────
+// ── Toolbar icon + badge ──────────────────────────────────────────────────────
 
 const ICON_COLORS = {
   [STATUS.IDLE]:          '#9A8070',
@@ -429,6 +441,44 @@ const ICON_COLORS = {
   [STATUS.BREAK]:         '#2BBFA0',
   [STATUS.LONG_BREAK]:    '#2BBFA0',
 };
+
+/** Redraw both the icon and the minutes badge from current state. */
+async function refreshActionUi() {
+  const state = await getState();
+  await updateActionIcon(state.status);
+  await updateBadge(state);
+}
+
+/**
+ * Toolbar badge: minutes remaining ("14m") while a phase runs, empty at idle.
+ * A repeating 1-minute alarm (BADGE_TICK) keeps it fresh; while paused the
+ * alarm is cleared and the badge freezes at the paused minutes.
+ */
+async function updateBadge(state) {
+  let text = '';
+  if (ACTIVE_STATUSES.includes(state.status)) {
+    const remaining = state.isPaused
+      ? state.pausedRemaining ?? 0
+      : state.startTime + state.phaseDuration - Date.now();
+    text = `${Math.max(1, Math.ceil(remaining / MINUTE))}m`;
+  }
+
+  try {
+    await chrome.action.setBadgeText({ text });
+    if (text) {
+      await chrome.action.setBadgeBackgroundColor({
+        color: ICON_COLORS[state.status] ?? ICON_COLORS[STATUS.IDLE],
+      });
+      await chrome.action.setBadgeTextColor({ color: '#FFFFFF' });
+    }
+  } catch (e) {
+    console.warn('[PomoFomo BG] Could not update badge:', e);
+  }
+}
+
+async function ensureBadgeTick() {
+  await chrome.alarms.create(ALARM.BADGE_TICK, { periodInMinutes: 1 });
+}
 
 async function updateActionIcon(status) {
   try {
