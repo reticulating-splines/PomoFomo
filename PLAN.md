@@ -17,15 +17,16 @@ PomoFomo/
 │   └── storage.js                   ← chrome.storage wrappers
 ├── timer/
 │   ├── timer.html                   ← persistent pinned tab (main experience)
-│   ├── timer.js                     ← arc, controls, dragon wiring, message bus
-│   ├── timer.css                    ← layout, CSS custom property themes, animations
-│   └── dragon.js                    ← DragonController: SVG fetch+inject, state machine
+│   ├── timer.js                     ← renderer: arc, controls, chimes, storage subscription
+│   ├── timer.css                    ← layout, CSS custom property themes, all animations
+│   ├── character.js                 ← Dragon + Book controllers (SVG inject, state classes)
+│   └── book.svg                     ← "Page" the book (alternate character)
 ├── popup/
 │   ├── popup.html                   ← extension icon click: status + settings
 │   ├── popup.js
 │   └── popup.css
 ├── dragon/
-│   └── dragon.svg                   ← SVG source (fetched + injected by dragon.js)
+│   └── dragon.svg                   ← "Ember" (fetched + injected by character.js)
 ├── sounds/
 │   └── sounds.js                    ← SoundPlayer: pure Web Audio API, no external files
 ├── favicon/
@@ -46,14 +47,31 @@ PomoFomo/
 
 ## Key Design Decisions
 
-- **Persistent pinned tab** (`timer.html`) is the main experience. Service worker re-creates it if closed via `chrome.tabs.onRemoved`.
-- **Popup** is a mini remote control: status chip + settings panel (gear icon slides in settings view).
+- **chrome.storage is the single source of truth.** The service worker is the
+  only writer of runtime state and writes each phase transition as ONE atomic
+  `set()`. UI pages render from storage on load and subscribe via
+  `chrome.storage.onChanged` — the SW never pushes messages to them.
+  Chimes are derived in the timer tab from observed status transitions.
+- **Persistent pinned tab** (`timer.html`) is the main experience. The SW finds
+  it by URL (`tabs.query`, no stored tab id), prunes duplicates, and re-creates
+  it if closed (unless the whole window is closing).
+- **Popup** is a mini remote control: status chip + settings panel (gear icon
+  slides in settings view) + quiet parent controls (pause / skip / stop).
+  Stays live while open via the same storage subscription.
 - **No content script** — no overlay injection. Break alert = tab focus switch. Games pause naturally when tab loses focus (Page Visibility API).
 - **Two-stage break alert:**
   1. `focus-warning` (~2 min before): dragon goes tired, favicon pulses, soft chime
   2. Break fires: `chrome.tabs.update({active:true})` + `chrome.windows.update({focused:true})` + system notification + dragon celebrates + nature sounds
-- **One snooze per session** (5 min). Button hidden after use. Dragon reacts mildly.
+- **One snooze per session** (5 min). Button hidden after use. A second warning
+  fires 2 min before the extended end.
+- **Breaks auto-roll into the next focus session** — the child clicks Start
+  once. The character plays a brief `break-done` celebration at the rollover.
+- **Two characters** (dragon / book) share one controller base and state
+  vocabulary; switching the setting hot-swaps them live.
+- **Nag mode** (optional): a repeating 30 s `chrome.alarms` alarm re-focuses the
+  timer tab during breaks (SW-side, immune to background-tab throttling).
 - **All sounds synthesized** via Web Audio API — no external audio files.
+  Ambient = looped brown-noise AudioBuffer + sporadic pentatonic tones.
 - **Settings take effect at next phase start**, never mid-session.
 - **AudioContext unlocked** by user clicking Start (required by Chrome autoplay policy).
 
@@ -62,16 +80,16 @@ PomoFomo/
 ## State Shape
 
 ```js
-// chrome.storage.local — runtime state
+// chrome.storage.local — runtime state (SW is the only writer)
 {
   status: 'idle' | 'focus' | 'focus-warning' | 'break' | 'longBreak',
   sessionNumber: 1,         // 1..sessionsBeforeLongBreak
   startTime: null,          // epoch ms — source of truth for time remaining
   phaseDuration: null,      // total ms for current phase
+  isPaused: false,
+  pausedRemaining: null,    // ms remaining when paused
   snoozeUsed: false,
-  timerTabId: null,
-  timerWindowId: null,
-  logs: []                  // session log entries (future analytics)
+  logs: []                  // completed-phase entries (future analytics)
 }
 
 // chrome.storage.sync — settings
@@ -81,30 +99,35 @@ PomoFomo/
   longBreakMinutes: 15,
   sessionsBeforeLongBreak: 3,
   soundEnabled: true,
-  persistOnRelaunch: false
+  persistOnRelaunch: false,
+  nagDuringBreak: false,          // re-focus timer tab every 30 s during breaks
+  timerCharacter: 'dragon'        // 'dragon' | 'book'
 }
 ```
 
 ## Chrome Alarms
-| Alarm name       | Fires when                  |
-|------------------|-----------------------------|
-| `focus-warning`  | 2 min before focus end      |
-| `focus-end`      | Focus session complete      |
-| `break-end`      | Break complete              |
-| `snooze-end`     | 5 min after snooze          |
+| Alarm name       | Fires when                               |
+|------------------|------------------------------------------|
+| `focus-warning`  | 2 min before focus end (again after snooze) |
+| `focus-end`      | Focus session complete                   |
+| `break-end`      | Break complete                           |
+| `snooze-end`     | 5 min after snooze                       |
+| `nag`            | Every 30 s during breaks (if enabled)    |
 
 ## Message Types (timer.js / popup.js → background.js)
-`START` `PAUSE` `SKIP` `SNOOZE` `BREAK_ACKNOWLEDGED` `GET_STATE` `SETTINGS_CHANGED`
+User actions only — state flows back through `chrome.storage.onChanged`:
+`START` `PAUSE` `RESUME` `STOP` `SKIP` `SNOOZE`
 
-## Dragon States
-| State          | Trigger              | Key animation                                        |
-|----------------|----------------------|------------------------------------------------------|
-| `idle`         | Not started          | Slow blink, breathe                                  |
-| `focus`        | Session running      | Alert bob, blink every 8s                            |
-| `focus-tired`  | focus-warning alarm  | Yawn, drooping eyelids                               |
-| `break-start`  | Break fires          | Jump, wings spread, sparkle burst → auto break-active|
-| `break-active` | During break         | Tail wag, playful bob, butterfly                     |
-| `break-done`   | Break complete       | Ready bounce, bright eyes                            |
+## Character States (shared by dragon and book)
+| State            | Trigger                        | Dragon animation                                     |
+|------------------|--------------------------------|------------------------------------------------------|
+| `idle`           | Not started / paused           | Slow blink, breathe, tail sway                       |
+| `focus`          | Session running                | Alert bob, blink every 8s, reads book                |
+| `focus-tired`    | focus-warning alarm            | Sway, drooping eyelids                               |
+| `focus-sleeping` | Last 10 s of warning (UI-only) | Eyes closed, floating ZZZ                            |
+| `break-start`    | Break fires                    | Jump, wings spread, sparkle burst → auto break-active|
+| `break-active`   | During break                   | Tail wag, wing flutter, playful bob, butterfly       |
+| `break-done`     | Break → next session rollover  | Ready bounce, bright eyes (brief, UI-only)           |
 
 ---
 
