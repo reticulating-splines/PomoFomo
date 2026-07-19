@@ -6,17 +6,13 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 
-<!--
-  data-view="status"   → shows the timer status panel
-  data-view="settings" → shows the settings panel (slides in)
--->
+<!-- data-view="status" | "settings" — the gear toggles; CSS slides the panels -->
 <body data-view="status">
 
-  <!-- ── Header (persistent across views) ───────────────────────────────── -->
   <header class="popup-header">
     <span class="brand">🐉 PomoFomo</span>
 
-    <!-- Mini timer badge: visible when settings view is open so you don't lose context -->
+    <!-- Mini timer badge: keeps context visible while in settings -->
     <span class="mini-badge" id="miniBadge" aria-label="Current timer status"></span>
 
     <button class="icon-btn" id="btnGear" aria-label="Toggle settings" title="Settings">
@@ -36,7 +32,6 @@
   <section class="view view-status" id="viewStatus" aria-label="Timer status">
 
     <div class="status-card">
-      <!-- Mini dragon + phase info -->
       <div class="status-phase-row">
         <div class="status-icon" id="statusIcon" aria-hidden="true">🐉</div>
         <div class="status-info">
@@ -44,25 +39,22 @@
           <div class="status-time"  id="statusTime">20:00</div>
         </div>
       </div>
-
-      <!-- Session dots (mini version) -->
       <div class="session-dots-mini" id="popupDots" role="img" aria-label="Session progress"></div>
     </div>
 
-    <!-- Go to timer tab -->
-    <button class="btn btn-primary" id="btnGoToTimer">
-      Open Timer Tab ↗
-    </button>
+    <button class="btn btn-primary" id="btnGoToTimer">Open Timer Tab ↗</button>
 
-    <!-- Quick start: shown only when timer is idle -->
-    <button class="btn btn-ghost" id="btnQuickStart" hidden>
-      Start Focus
-    </button>
+    <!-- Idle only -->
+    <button class="btn btn-ghost" id="btnQuickStart" hidden>Start Focus</button>
 
-    <!-- Stop: shown when timer is running — subtle parent control -->
-    <button class="btn btn-stop-popup" id="btnStop" hidden>
-      Stop timer
-    </button>
+    <!-- Active only: quiet parent controls -->
+    <div class="parent-controls" id="parentControls" hidden>
+      <button class="btn-text" id="btnPauseResume">Pause</button>
+      <span class="dot-sep" aria-hidden="true">·</span>
+      <button class="btn-text" id="btnSkip">Skip phase</button>
+      <span class="dot-sep" aria-hidden="true">·</span>
+      <button class="btn-text" id="btnStop">Stop</button>
+    </div>
 
   </section>
 
@@ -100,31 +92,14 @@
 
       <div class="field">
         <label for="sSessions">Sessions before long break</label>
-        <div class="stepper-row">
+        <div class="slider-row">
           <input type="range" id="sSessions" min="2" max="6" step="1"
                  aria-label="Number of sessions before long break">
           <span class="slider-val" id="sSessionsVal">3</span>
         </div>
       </div>
 
-      <div class="divider"></div>
-
-      <label class="toggle-label" for="sSound">
-        <span>Sounds</span>
-        <div class="toggle-track">
-          <input type="checkbox" id="sSound" role="switch" aria-label="Enable sounds">
-          <div class="toggle-thumb"></div>
-        </div>
-      </label>
-
-      <label class="toggle-label" for="sPersist">
-        <span>Resume timer after relaunch</span>
-        <div class="toggle-track">
-          <input type="checkbox" id="sPersist" role="switch"
-                 aria-label="Resume timer after browser relaunch">
-          <div class="toggle-thumb"></div>
-        </div>
-      </label>
+      <p class="field-hint">Time changes apply from the next session.</p>
 
       <div class="divider"></div>
 
@@ -138,18 +113,36 @@
           </label>
           <label class="character-option" for="sCharBook">
             <input type="radio" id="sCharBook" name="timerCharacter" value="book"
-                   aria-label="Animated book">
+                   aria-label="Page the book">
             <span class="character-btn">📖 Book</span>
           </label>
         </div>
-        <p class="field-hint">Takes effect after reloading the extension.</p>
       </div>
+
+      <div class="divider"></div>
+
+      <label class="toggle-label" for="sSound">
+        <span>Sounds</span>
+        <div class="toggle-track">
+          <input type="checkbox" id="sSound" role="switch" aria-label="Enable sounds">
+          <div class="toggle-thumb"></div>
+        </div>
+      </label>
 
       <label class="toggle-label" for="sNag">
         <span>Nag during break</span>
         <div class="toggle-track">
           <input type="checkbox" id="sNag" role="switch"
-                 aria-label="Refocus this tab every 20 seconds during breaks">
+                 aria-label="Return to the timer tab every 30 seconds during breaks">
+          <div class="toggle-thumb"></div>
+        </div>
+      </label>
+
+      <label class="toggle-label" for="sPersist">
+        <span>Resume timer after relaunch</span>
+        <div class="toggle-track">
+          <input type="checkbox" id="sPersist" role="switch"
+                 aria-label="Resume timer after browser relaunch">
           <div class="toggle-thumb"></div>
         </div>
       </label>

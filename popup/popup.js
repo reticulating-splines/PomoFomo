@@ -1,11 +1,14 @@
 /**
  * PomoFomo — Popup (popup.js)
  *
- * The popup is destroyed when the user clicks away and recreated on each open.
- * Never store state in variables — always read from service worker / storage.
+ * The popup is destroyed on close and recreated on open, so it reads
+ * everything from storage on load — and stays live while open by
+ * subscribing to chrome.storage.onChanged (state can change under it:
+ * alarms fire, the timer tab's buttons are clicked, etc).
  */
 
-import { MSG, STATUS, DEFAULT_SETTINGS } from '../shared/constants.js';
+import { MSG, STATUS, BREAK_STATUSES, ACTIVE_STATUSES, DEFAULT_SETTINGS } from '../shared/constants.js';
+import { getState, getSettings, saveSettings } from '../shared/storage.js';
 
 // ── Element refs ─────────────────────────────────────────────────────────────
 const bodyEl         = document.body;
@@ -17,226 +20,226 @@ const statusIcon     = document.getElementById('statusIcon');
 const popupDots      = document.getElementById('popupDots');
 const btnGoToTimer   = document.getElementById('btnGoToTimer');
 const btnQuickStart  = document.getElementById('btnQuickStart');
+const parentControls = document.getElementById('parentControls');
+const btnPauseResume = document.getElementById('btnPauseResume');
+const btnSkip        = document.getElementById('btnSkip');
 const btnStop        = document.getElementById('btnStop');
 const settingsForm   = document.getElementById('settingsForm');
 
-// Settings inputs
-const sFocusMin    = document.getElementById('sFocusMin');
-const sShortMin    = document.getElementById('sShortMin');
-const sLongMin     = document.getElementById('sLongMin');
-const sSessions    = document.getElementById('sSessions');
-const sSound       = document.getElementById('sSound');
-const sPersist     = document.getElementById('sPersist');
-const sNag         = document.getElementById('sNag');
-const sCharDragon  = document.getElementById('sCharDragon');
-const sCharBook    = document.getElementById('sCharBook');
-const sFocusVal    = document.getElementById('sFocusVal');
-const sShortVal    = document.getElementById('sShortVal');
-const sLongVal     = document.getElementById('sLongVal');
-const sSessionsVal = document.getElementById('sSessionsVal');
+const inputs = {
+  focus:    document.getElementById('sFocusMin'),
+  short:    document.getElementById('sShortMin'),
+  long:     document.getElementById('sLongMin'),
+  sessions: document.getElementById('sSessions'),
+  sound:    document.getElementById('sSound'),
+  persist:  document.getElementById('sPersist'),
+  nag:      document.getElementById('sNag'),
+  dragon:   document.getElementById('sCharDragon'),
+  book:     document.getElementById('sCharBook'),
+};
 
-// ── State ─────────────────────────────────────────────────────────────────────
+const sliderLabels = {
+  focus:    document.getElementById('sFocusVal'),
+  short:    document.getElementById('sShortVal'),
+  long:     document.getElementById('sLongVal'),
+  sessions: document.getElementById('sSessionsVal'),
+};
+
+// ── State ────────────────────────────────────────────────────────────────────
 let currentState = null;
-let tickInterval  = null;
-let sessionsTotal = DEFAULT_SETTINGS.sessionsBeforeLongBreak;
+let settings = { ...DEFAULT_SETTINGS };
+let tickInterval = null;
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+// ── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
-  // Load state and settings in parallel
-  const [state, settings] = await Promise.all([
-    sendMsg(MSG.GET_STATE),
-    chrome.storage.sync.get(Object.keys(DEFAULT_SETTINGS)).then(r => ({
-      ...DEFAULT_SETTINGS, ...r,
-    })),
-  ]);
-
-  sessionsTotal = settings.sessionsBeforeLongBreak;
-
-  if (state) {
-    currentState = state;
-    renderStatus(state);
-    if (isActivePhase(state)) {
-      tickInterval = setInterval(() => renderTime(currentState), 1000);
-    }
-  }
-
-  populateSettings(settings);
+  const [state, loadedSettings] = await Promise.all([getState(), getSettings()]);
+  settings = loadedSettings;
+  populateSettings();
+  render(state);
 }
 
-// ── Status view ───────────────────────────────────────────────────────────────
-function renderStatus(state) {
-  statusPhase.textContent = getPhaseLabel(state);
-  statusIcon.textContent  = getPhaseIcon(state);
+init();
+
+// Stay live while open
+chrome.storage.onChanged.addListener(async (_changes, area) => {
+  if (area === 'local') {
+    render(await getState());
+  } else if (area === 'sync') {
+    settings = await getSettings();
+    // Don't repopulate the form — the user is probably the one dragging it
+    if (currentState) render(currentState);
+  }
+});
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function render(state) {
+  currentState = state;
+
+  statusPhase.textContent = phaseLabel(state);
+  statusIcon.textContent = phaseIcon(state);
   renderTime(state);
   renderDots(state);
 
-  // Popup is the control panel:
-  //   Idle   → show "Start Focus"; hide "Stop timer"
-  //   Active → show "Stop timer";  hide "Start Focus"
   const isIdle = state.status === STATUS.IDLE;
   btnQuickStart.hidden = !isIdle;
-  btnStop.hidden       = isIdle;
+  parentControls.hidden = isIdle;
+  btnPauseResume.textContent = state.isPaused ? 'Resume' : 'Pause';
+
+  clearInterval(tickInterval);
+  if (isRunning(state)) {
+    tickInterval = setInterval(() => renderTime(currentState), 1000);
+  }
 }
 
 function renderTime(state) {
-  if (!state) return;
-
-  let remaining;
+  let remaining = null;
   if (state.isPaused && state.pausedRemaining != null) {
     remaining = state.pausedRemaining;
   } else if (state.startTime && state.phaseDuration) {
     remaining = Math.max(0, state.phaseDuration - (Date.now() - state.startTime));
-  } else {
-    remaining = null;
   }
 
-  if (remaining != null) {
-    statusTime.textContent = formatTime(remaining);
-  } else {
-    // Idle — show default focus duration
-    chrome.storage.sync.get('focusMinutes').then(r => {
-      statusTime.textContent = formatTime((r.focusMinutes ?? 20) * 60 * 1000);
-    }).catch(() => {
-      statusTime.textContent = '20:00';
-    });
-  }
+  statusTime.textContent = formatTime(remaining ?? settings.focusMinutes * 60 * 1000);
 
-  // Update mini badge (shown in settings view)
-  if (remaining != null && state.status !== STATUS.IDLE) {
-    miniBadge.textContent = `${formatTime(remaining)} · ${getPhaseLabel(state)}`;
-  } else {
-    miniBadge.textContent = '';
-  }
+  miniBadge.textContent = remaining != null && state.status !== STATUS.IDLE
+    ? `${formatTime(remaining)} · ${phaseLabel(state)}`
+    : '';
 }
 
 function renderDots(state) {
-  popupDots.innerHTML = '';
-  for (let i = 1; i <= sessionsTotal; i++) {
-    const dot = document.createElement('span');
-    dot.className = 'session-dot-mini';
-    if (i < state.sessionNumber) dot.classList.add('done');
-    else if (i === state.sessionNumber) dot.classList.add('current');
-    popupDots.appendChild(dot);
-  }
+  const onBreak = BREAK_STATUSES.includes(state.status);
+  popupDots.replaceChildren(
+    ...Array.from({ length: settings.sessionsBeforeLongBreak }, (_, i) => {
+      const n = i + 1;
+      const dot = document.createElement('span');
+      dot.className = 'session-dot-mini';
+      if (n < state.sessionNumber || (onBreak && n === state.sessionNumber)) {
+        dot.classList.add('done');
+      } else if (n === state.sessionNumber) {
+        dot.classList.add('current');
+      }
+      return dot;
+    }),
+  );
 }
 
-// ── Settings view ─────────────────────────────────────────────────────────────
-function populateSettings(settings) {
-  sFocusMin.value  = settings.focusMinutes;
-  sShortMin.value  = settings.shortBreakMinutes;
-  sLongMin.value   = settings.longBreakMinutes;
-  sSessions.value  = settings.sessionsBeforeLongBreak;
-  sSound.checked   = settings.soundEnabled;
-  sPersist.checked = settings.persistOnRelaunch;
-  sNag.checked     = settings.nagDuringBreak ?? false;
-
-  const char = settings.timerCharacter ?? 'dragon';
-  sCharDragon.checked = (char === 'dragon');
-  sCharBook.checked   = (char === 'book');
-
+// ── Settings form ────────────────────────────────────────────────────────────
+function populateSettings() {
+  inputs.focus.value    = settings.focusMinutes;
+  inputs.short.value    = settings.shortBreakMinutes;
+  inputs.long.value     = settings.longBreakMinutes;
+  inputs.sessions.value = settings.sessionsBeforeLongBreak;
+  inputs.sound.checked  = settings.soundEnabled;
+  inputs.persist.checked = settings.persistOnRelaunch;
+  inputs.nag.checked    = settings.nagDuringBreak;
+  inputs.dragon.checked = settings.timerCharacter !== 'book';
+  inputs.book.checked   = settings.timerCharacter === 'book';
   updateSliderLabels();
 }
 
 function updateSliderLabels() {
-  sFocusVal.textContent    = `${sFocusMin.value} min`;
-  sShortVal.textContent    = `${sShortMin.value} min`;
-  sLongVal.textContent     = `${sLongMin.value} min`;
-  sSessionsVal.textContent = sSessions.value;
+  sliderLabels.focus.textContent    = `${inputs.focus.value} min`;
+  sliderLabels.short.textContent    = `${inputs.short.value} min`;
+  sliderLabels.long.textContent     = `${inputs.long.value} min`;
+  sliderLabels.sessions.textContent = inputs.sessions.value;
 }
 
-// Live save on any settings input
+// Live-save on any input. The SW reads settings fresh at each transition,
+// and the timer tab reacts to the sync-area change — no message needed.
 settingsForm.addEventListener('input', async () => {
   updateSliderLabels();
-
-  const settings = collectSettings();
   try {
-    await chrome.storage.sync.set(settings);
-    await sendMsg(MSG.SETTINGS_CHANGED, { settings });
+    await saveSettings({
+      focusMinutes:            Number(inputs.focus.value),
+      shortBreakMinutes:       Number(inputs.short.value),
+      longBreakMinutes:        Number(inputs.long.value),
+      sessionsBeforeLongBreak: Number(inputs.sessions.value),
+      soundEnabled:            inputs.sound.checked,
+      persistOnRelaunch:       inputs.persist.checked,
+      nagDuringBreak:          inputs.nag.checked,
+      timerCharacter:          inputs.book.checked ? 'book' : 'dragon',
+    });
   } catch (e) {
     console.error('[PomoFomo Popup] Settings save failed:', e);
   }
 });
 
-function collectSettings() {
-  return {
-    focusMinutes:            Number(sFocusMin.value),
-    shortBreakMinutes:       Number(sShortMin.value),
-    longBreakMinutes:        Number(sLongMin.value),
-    sessionsBeforeLongBreak: Number(sSessions.value),
-    soundEnabled:            sSound.checked,
-    persistOnRelaunch:       sPersist.checked,
-    nagDuringBreak:          sNag.checked,
-    timerCharacter:          sCharBook.checked ? 'book' : 'dragon',
-  };
-}
-
-// ── View toggle (gear icon) ───────────────────────────────────────────────────
+// ── View toggle ──────────────────────────────────────────────────────────────
 btnGear.addEventListener('click', () => {
-  const isSettings = bodyEl.dataset.view === 'settings';
-  bodyEl.dataset.view = isSettings ? 'status' : 'settings';
-  // CSS handles show/hide via translateX — no hidden attribute needed
+  bodyEl.dataset.view = bodyEl.dataset.view === 'settings' ? 'status' : 'settings';
 });
 
-// ── Go to timer tab ───────────────────────────────────────────────────────────
+// ── Actions ──────────────────────────────────────────────────────────────────
 btnGoToTimer.addEventListener('click', async () => {
-  const state = await sendMsg(MSG.GET_STATE);
-  if (state?.timerTabId) {
-    try {
-      await chrome.tabs.update(state.timerTabId, { active: true });
-      if (state.timerWindowId) {
-        await chrome.windows.update(state.timerWindowId, { focused: true });
-      }
-    } catch (_e) {
-      // Tab may have been closed — service worker will recreate it
-    }
-  }
+  await focusTimerTab();
   window.close();
 });
 
-// ── Quick start ───────────────────────────────────────────────────────────────
 btnQuickStart.addEventListener('click', async () => {
   await sendMsg(MSG.START);
-  // Open timer tab so the child can see the dragon
-  const state = await sendMsg(MSG.GET_STATE);
-  if (state?.timerTabId) {
-    try {
-      await chrome.tabs.update(state.timerTabId, { active: true });
-    } catch (_e) {}
-  }
+  await focusTimerTab();
   window.close();
 });
 
-// ── Stop ─────────────────────────────────────────────────────────────────────
+btnPauseResume.addEventListener('click', () =>
+  sendMsg(currentState?.isPaused ? MSG.RESUME : MSG.PAUSE));
+
+btnSkip.addEventListener('click', () => sendMsg(MSG.SKIP));
+
 btnStop.addEventListener('click', async () => {
   await sendMsg(MSG.STOP);
   window.close();
 });
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function getPhaseLabel(state) {
-  if (state.isPaused)                        return 'Paused';
-  if (state.status === STATUS.IDLE)          return 'Ready';
-  if (state.status === STATUS.FOCUS)         return 'Focus';
-  if (state.status === STATUS.FOCUS_WARNING) return 'Almost done!';
-  if (state.status === STATUS.BREAK)         return 'Break';
-  if (state.status === STATUS.LONG_BREAK)    return 'Long break';
-  return 'Ready';
+async function focusTimerTab() {
+  const timerUrl = chrome.runtime.getURL('timer/timer.html');
+  try {
+    const tabs = await chrome.tabs.query({});
+    const tab = tabs.find(t => t.url && t.url.startsWith(timerUrl));
+    if (tab) {
+      await chrome.tabs.update(tab.id, { active: true });
+      await chrome.windows.update(tab.windowId, { focused: true });
+    }
+    // No tab? The SW recreates it shortly; nothing to do here.
+  } catch (e) {
+    console.warn('[PomoFomo Popup] Could not focus timer tab:', e);
+  }
 }
 
-function getPhaseIcon(state) {
-  if (state.status === STATUS.IDLE)                                         return '🐉';
-  if (state.status === STATUS.FOCUS || state.status === STATUS.FOCUS_WARNING) return '📖';
-  if (state.status === STATUS.BREAK || state.status === STATUS.LONG_BREAK)  return '🌿';
-  return '🐉';
+async function sendMsg(type) {
+  try {
+    return await chrome.runtime.sendMessage({ type });
+  } catch (e) {
+    console.error('[PomoFomo Popup] sendMsg failed:', type, e);
+    return null;
+  }
 }
 
-function isActivePhase(state) {
-  return (
-    state.startTime != null &&
-    state.phaseDuration != null &&
-    !state.isPaused &&
-    state.status !== STATUS.IDLE
-  );
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function phaseLabel(state) {
+  if (state.isPaused) return 'Paused';
+  switch (state.status) {
+    case STATUS.FOCUS:         return 'Focus';
+    case STATUS.FOCUS_WARNING: return 'Almost done!';
+    case STATUS.BREAK:         return 'Break';
+    case STATUS.LONG_BREAK:    return 'Long break';
+    default:                   return 'Ready';
+  }
+}
+
+function phaseIcon(state) {
+  if (BREAK_STATUSES.includes(state.status)) return '🌿';
+  if (ACTIVE_STATUSES.includes(state.status)) {
+    return settings.timerCharacter === 'book' ? '📖' : '🐉';
+  }
+  return settings.timerCharacter === 'book' ? '📚' : '🐉';
+}
+
+function isRunning(state) {
+  return state.startTime != null
+    && state.phaseDuration != null
+    && !state.isPaused
+    && state.status !== STATUS.IDLE;
 }
 
 function formatTime(ms) {
@@ -245,15 +248,3 @@ function formatTime(ms) {
   const s = totalSec % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
-
-async function sendMsg(type, payload = {}) {
-  try {
-    return await chrome.runtime.sendMessage({ type, ...payload });
-  } catch (e) {
-    console.error('[PomoFomo Popup] sendMsg failed:', type, e);
-    return null;
-  }
-}
-
-// ── Run ───────────────────────────────────────────────────────────────────────
-init();
