@@ -1,31 +1,41 @@
 /**
  * PomoFomo — Service Worker (background.js)
  *
- * This is the single source of timer authority. All timing decisions happen
- * here via chrome.alarms. The timer tab and popup are display-only — they
- * read state and send user actions up to this file.
+ * Single source of timer authority. All timing decisions happen here via
+ * chrome.alarms; every phase transition is written to chrome.storage.local
+ * in ONE atomic set() call. UI pages (timer tab, popup) render from storage
+ * and subscribe to chrome.storage.onChanged — the service worker never
+ * pushes state messages to them.
  *
- * CRITICAL: All chrome.* event listeners must be registered synchronously
- * at module top level so they survive service worker sleep/wake cycles.
+ * Messages (UI → SW) exist only for user actions: START, PAUSE, RESUME,
+ * STOP, SKIP, SNOOZE.
+ *
+ * CRITICAL: all chrome.* event listeners are registered synchronously at
+ * module top level so they survive service worker sleep/wake cycles.
  */
 
 import {
-  ALARM, STATUS, MSG,
-  DEFAULT_STATE, DEFAULT_SETTINGS, WARNING_MINUTES,
+  ALARM, STATUS, MSG, BREAK_STATUSES, FOCUS_STATUSES, ACTIVE_STATUSES,
+  DEFAULT_STATE, DEFAULT_SETTINGS,
+  WARNING_MINUTES, SNOOZE_MINUTES, NAG_PERIOD_MINUTES, MAX_LOG_ENTRIES,
 } from './shared/constants.js';
-import { getState, setState, resetState, getSettings } from './shared/storage.js';
+import { getState, setState, getSettings } from './shared/storage.js';
+
+const TIMER_URL = chrome.runtime.getURL('timer/timer.html');
+const NOTIFICATION_ID = 'pomofomo-break';
+const MINUTE = 60 * 1000;
 
 // ── Top-level event listener registration ────────────────────────────────────
-// These MUST be at the top level, not inside async functions.
 
 chrome.runtime.onInstalled.addListener(handleInstalled);
 chrome.runtime.onStartup.addListener(handleStartup);
 chrome.alarms.onAlarm.addListener(handleAlarm);
 chrome.tabs.onRemoved.addListener(handleTabRemoved);
-chrome.tabs.onUpdated.addListener(handleTabUpdated);
+chrome.notifications.onClicked.addListener(handleNotificationClicked);
+chrome.storage.onChanged.addListener(handleStorageChanged);
 
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  handleMessage(msg, sender)
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  handleMessage(msg)
     .then(sendResponse)
     .catch(err => {
       console.error('[PomoFomo BG] Message error:', err);
@@ -34,591 +44,419 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true; // keep channel open for async sendResponse
 });
 
-// ── Install / Update ──────────────────────────────────────────────────────────
+// ── Install / update / browser startup ───────────────────────────────────────
 
 async function handleInstalled(details) {
   if (details.reason === 'install') {
     await chrome.storage.local.set({ ...DEFAULT_STATE });
     await chrome.storage.sync.set({ ...DEFAULT_SETTINGS });
-    console.log('[PomoFomo] Extension installed, initializing.');
-  }
-
-  if (details.reason === 'update') {
-    // Merge new settings keys without overwriting existing user preferences
+  } else if (details.reason === 'update') {
+    // Add any new settings keys without overwriting user preferences
     const existing = await chrome.storage.sync.get(Object.keys(DEFAULT_SETTINGS));
     await chrome.storage.sync.set({ ...DEFAULT_SETTINGS, ...existing });
   }
-
   await ensureTimerTab();
 }
-
-// ── Browser Startup ───────────────────────────────────────────────────────────
 
 async function handleStartup() {
   const settings = await getSettings();
 
-  if (!settings.persistOnRelaunch) {
-    await chrome.alarms.clearAll();
-    await resetState();
-    console.log('[PomoFomo] Browser started, timer reset (persist disabled).');
-  } else {
-    console.log('[PomoFomo] Browser started, attempting to resume timer.');
+  if (settings.persistOnRelaunch) {
     await reconcileAlarms();
+  } else {
+    await chrome.alarms.clearAll();
+    await setState(phaseSnapshot({ status: STATUS.IDLE, sessionNumber: 1 }));
+    await updateActionIcon(STATUS.IDLE);
   }
 
   await ensureTimerTab();
 }
 
-// ── Ensure timer tab exists and is pinned ─────────────────────────────────────
-
-async function ensureTimerTab() {
-  const state = await getState();
-  const timerUrl = chrome.runtime.getURL('timer/timer.html');
-
-  // Check if saved tab is still alive
-  if (state.timerTabId) {
-    try {
-      const tab = await chrome.tabs.get(state.timerTabId);
-      if (tab && tab.url && tab.url.startsWith(timerUrl.split('?')[0])) {
-        // Tab exists — ensure it's pinned
-        if (!tab.pinned) {
-          await chrome.tabs.update(tab.id, { pinned: true });
-        }
-        await setState({ timerWindowId: tab.windowId });
-        return; // Tab is healthy
-      }
-    } catch (_e) {
-      // Tab no longer exists — fall through to create
-    }
-  }
-
-  // Create a new pinned timer tab (not active so it doesn't steal focus on startup)
-  const tab = await chrome.tabs.create({
-    url: timerUrl,
-    pinned: true,
-    active: false,
-  });
-
-  await setState({ timerTabId: tab.id, timerWindowId: tab.windowId });
-  console.log('[PomoFomo] Timer tab created:', tab.id);
-}
-
 // ── Reconcile alarms after browser restart (persist mode) ────────────────────
-// Re-registers alarms based on saved startTime + phaseDuration.
-// If a phase already ended while the browser was closed, fires immediately.
+// chrome.alarms don't survive a full browser restart; recompute them from the
+// saved startTime + phaseDuration. If a phase ended while the browser was
+// closed, transition immediately.
 
 async function reconcileAlarms() {
   const state = await getState();
-  if (state.status === STATUS.IDLE || state.isPaused) return;
+  if (!ACTIVE_STATUSES.includes(state.status)) return;
+  if (state.isPaused) return; // paused state persists; alarms recreate on resume
 
   const now = Date.now();
   const phaseEnd = state.startTime + state.phaseDuration;
-  const existingAlarms = await chrome.alarms.getAll();
-  const alarmNames = new Set(existingAlarms.map(a => a.name));
 
-  if (state.status === STATUS.FOCUS || state.status === STATUS.FOCUS_WARNING) {
+  if (FOCUS_STATUSES.includes(state.status)) {
     if (now >= phaseEnd) {
-      // Focus ended while browser was closed — transition to break immediately
-      await transitionToBreak();
+      await startBreak({ natural: true });
       return;
     }
-
-    // Re-register missing alarms
-    const warningAt = phaseEnd - WARNING_MINUTES * 60 * 1000;
-    if (!alarmNames.has(ALARM.FOCUS_END)) {
-      await chrome.alarms.create(ALARM.FOCUS_END, { when: phaseEnd });
-    }
-    if (now < warningAt && !alarmNames.has(ALARM.FOCUS_WARNING)) {
+    await chrome.alarms.create(ALARM.FOCUS_END, { when: phaseEnd });
+    const warningAt = phaseEnd - WARNING_MINUTES * MINUTE;
+    if (now < warningAt) {
       await chrome.alarms.create(ALARM.FOCUS_WARNING, { when: warningAt });
-    } else if (now >= warningAt && state.status !== STATUS.FOCUS_WARNING) {
+    } else if (state.status === STATUS.FOCUS) {
       await setState({ status: STATUS.FOCUS_WARNING });
     }
-  }
-
-  if (state.status === STATUS.BREAK || state.status === STATUS.LONG_BREAK) {
+    await updateActionIcon((await getState()).status);
+  } else {
+    // break / longBreak
     if (now >= phaseEnd) {
-      await endBreak();
+      await finishBreak({ natural: true });
       return;
     }
-    if (!alarmNames.has(ALARM.BREAK_END)) {
-      await chrome.alarms.create(ALARM.BREAK_END, { when: phaseEnd });
-    }
+    await chrome.alarms.create(ALARM.BREAK_END, { when: phaseEnd });
+    await ensureNagAlarm();
+    await updateActionIcon(state.status);
   }
-
-  // Push updated state to timer tab
-  await broadcastToTimerTab({ type: MSG.STATE_UPDATE, state: await getState() });
 }
 
-// ── Alarm Handler ─────────────────────────────────────────────────────────────
+// ── Alarm handler ─────────────────────────────────────────────────────────────
 
 async function handleAlarm(alarm) {
-  console.log('[PomoFomo] Alarm fired:', alarm.name);
+  const state = await getState();
 
   switch (alarm.name) {
     case ALARM.FOCUS_WARNING:
-      await handleFocusWarning();
+      if (state.status !== STATUS.FOCUS) return; // stale alarm guard
+      await setState({ status: STATUS.FOCUS_WARNING });
+      await updateActionIcon(STATUS.FOCUS_WARNING);
       break;
 
     case ALARM.FOCUS_END:
     case ALARM.SNOOZE_END:
-      await transitionToBreak();
+      if (!FOCUS_STATUSES.includes(state.status)) return;
+      await startBreak({ natural: true });
       break;
 
     case ALARM.BREAK_END:
-      await endBreak();
+      if (!BREAK_STATUSES.includes(state.status)) return;
+      await finishBreak({ natural: true });
       break;
 
-    default:
-      console.warn('[PomoFomo] Unknown alarm:', alarm.name);
+    case ALARM.NAG: {
+      const settings = await getSettings();
+      if (BREAK_STATUSES.includes(state.status) && !state.isPaused && settings.nagDuringBreak) {
+        await activateTimerTab();
+      }
+      break;
+    }
   }
 }
 
-async function handleFocusWarning() {
-  const state = await getState();
-  if (state.status !== STATUS.FOCUS) return; // stale alarm guard
+// ── Phase transitions ─────────────────────────────────────────────────────────
+// Each transition: clear alarms → write ONE atomic state snapshot → schedule
+// new alarms → side effects (icon, tab focus, notification).
 
-  await setState({ status: STATUS.FOCUS_WARNING });
-  await broadcastToTimerTab({ type: MSG.STATE_UPDATE, state: await getState() });
-
-  const settings = await getSettings();
-  if (settings.soundEnabled) {
-    await broadcastToTimerTab({ type: MSG.PLAY_CHIME, variant: 'warning' });
-  }
-
-  await updateActionIcon(STATUS.FOCUS_WARNING);
-  console.log('[PomoFomo] Focus warning triggered.');
+/** Full runtime snapshot for a phase change — everything but logs. */
+function phaseSnapshot({ status, sessionNumber, startTime = null, phaseDuration = null }) {
+  return {
+    status,
+    sessionNumber,
+    startTime,
+    phaseDuration,
+    isPaused: false,
+    pausedRemaining: null,
+    snoozeUsed: false,
+  };
 }
 
-// ── Transition to Break ───────────────────────────────────────────────────────
+async function startFocus(sessionNumber) {
+  const settings = await getSettings();
+  const duration = settings.focusMinutes * MINUTE;
+  const now = Date.now();
 
-async function transitionToBreak() {
+  await chrome.alarms.clearAll();
+  await setState(phaseSnapshot({
+    status: STATUS.FOCUS,
+    sessionNumber,
+    startTime: now,
+    phaseDuration: duration,
+  }));
+
+  await scheduleFocusAlarms(now + duration);
+  await updateActionIcon(STATUS.FOCUS);
+}
+
+async function scheduleFocusAlarms(phaseEnd) {
+  await chrome.alarms.create(ALARM.FOCUS_END, { when: phaseEnd });
+  const warningAt = phaseEnd - WARNING_MINUTES * MINUTE;
+  if (warningAt > Date.now()) {
+    await chrome.alarms.create(ALARM.FOCUS_WARNING, { when: warningAt });
+  }
+}
+
+async function startBreak({ natural }) {
   const state = await getState();
   const settings = await getSettings();
 
-  // Log the completed focus session
   await appendLog({
     type: 'focus',
     scheduledDuration: state.phaseDuration,
-    actualDuration: state.startTime ? Date.now() - state.startTime : state.phaseDuration,
-    completedNaturally: true,
-    snoozed: state.snoozeUsed,
     startedAt: state.startTime,
     endedAt: Date.now(),
+    completedNaturally: natural,
+    snoozed: state.snoozeUsed,
   });
 
-  const isLongBreak = state.sessionNumber >= settings.sessionsBeforeLongBreak;
-  const breakMinutes = isLongBreak
-    ? settings.longBreakMinutes
-    : settings.shortBreakMinutes;
-  const breakStatus = isLongBreak ? STATUS.LONG_BREAK : STATUS.BREAK;
-  const breakDuration = breakMinutes * 60 * 1000;
+  const isLong = state.sessionNumber >= settings.sessionsBeforeLongBreak;
+  const breakMinutes = isLong ? settings.longBreakMinutes : settings.shortBreakMinutes;
+  const breakStatus = isLong ? STATUS.LONG_BREAK : STATUS.BREAK;
   const now = Date.now();
 
-  // Clear all focus-related alarms
-  await chrome.alarms.clear(ALARM.FOCUS_WARNING);
-  await chrome.alarms.clear(ALARM.FOCUS_END);
-  await chrome.alarms.clear(ALARM.SNOOZE_END);
-
-  // Set break state
-  await setState({
+  await chrome.alarms.clearAll();
+  await setState(phaseSnapshot({
     status: breakStatus,
+    sessionNumber: state.sessionNumber,
     startTime: now,
-    phaseDuration: breakDuration,
-    isPaused: false,
-    pausedRemaining: null,
-    snoozeUsed: false,
-  });
+    phaseDuration: breakMinutes * MINUTE,
+  }));
 
-  // Schedule break end
-  await chrome.alarms.create(ALARM.BREAK_END, { delayInMinutes: breakMinutes });
-
-  // Broadcast state BEFORE switching tabs so the tab renders correctly when activated
-  const newState = await getState();
-  await broadcastToTimerTab({ type: MSG.STATE_UPDATE, state: newState });
-
-  // Switch to timer tab and focus its window
-  await activateTimerTab();
-
-  // System notification (clear any previous one first to avoid stacking)
-  try { await chrome.notifications.clear('pomofomo-break'); } catch (_e) {}
-  await chrome.notifications.create('pomofomo-break', {
-    type: 'basic',
-    iconUrl: chrome.runtime.getURL('assets/icons/icon128.png'),
-    title: isLongBreak ? '🐉 Long break time!' : '🐉 Break time!',
-    message: isLongBreak
-      ? `Amazing work! Time for a ${settings.longBreakMinutes}-minute break. You earned it!`
-      : `Great focus! Take a quick ${settings.shortBreakMinutes}-minute break.`,
-    priority: 2,
-  });
-
-  // Play break chime
-  const freshSettings = await getSettings();
-  if (freshSettings.soundEnabled) {
-    await broadcastToTimerTab({ type: MSG.PLAY_CHIME, variant: 'break' });
-  }
-
+  await chrome.alarms.create(ALARM.BREAK_END, { when: now + breakMinutes * MINUTE });
+  await ensureNagAlarm();
   await updateActionIcon(breakStatus);
-  console.log(`[PomoFomo] Break started: ${isLongBreak ? 'long' : 'short'} (${breakMinutes} min)`);
+  await activateTimerTab();
+  await showBreakNotification(isLong, breakMinutes);
 }
 
-// ── End Break ─────────────────────────────────────────────────────────────────
-
-async function endBreak() {
+async function finishBreak({ natural }) {
   const state = await getState();
 
-  // Log the completed break
   await appendLog({
     type: state.status === STATUS.LONG_BREAK ? 'longBreak' : 'shortBreak',
     scheduledDuration: state.phaseDuration,
-    actualDuration: state.startTime ? Date.now() - state.startTime : state.phaseDuration,
-    completedNaturally: true,
-    snoozed: false,
     startedAt: state.startTime,
     endedAt: Date.now(),
+    completedNaturally: natural,
   });
 
-  const wasLongBreak = state.status === STATUS.LONG_BREAK;
-
-  // After a long break, cycle resets to session 1; otherwise advance
-  const newSessionNumber = wasLongBreak ? 1 : state.sessionNumber + 1;
-
-  await chrome.alarms.clear(ALARM.BREAK_END);
-
-  // Auto-start the next focus session — no idle state between cycles.
-  // The child only ever clicks Start once (the very first session).
-  const freshSettings = await getSettings();
-  const focusDuration = freshSettings.focusMinutes * 60 * 1000;
-  const now = Date.now();
-
-  await setState({
-    status: STATUS.FOCUS,
-    sessionNumber: newSessionNumber,
-    startTime: now,
-    phaseDuration: focusDuration,
-    isPaused: false,
-    pausedRemaining: null,
-    snoozeUsed: false,
-  });
-
-  // Schedule next focus session alarms
-  if (freshSettings.focusMinutes > WARNING_MINUTES) {
-    await chrome.alarms.create(ALARM.FOCUS_WARNING, {
-      delayInMinutes: freshSettings.focusMinutes - WARNING_MINUTES,
-    });
-  }
-  await chrome.alarms.create(ALARM.FOCUS_END, {
-    delayInMinutes: freshSettings.focusMinutes,
-  });
-
-  await broadcastToTimerTab({ type: MSG.STATE_UPDATE, state: await getState() });
-  await updateActionIcon(STATUS.FOCUS);
-  console.log('[PomoFomo] Break ended, auto-starting session', newSessionNumber);
+  // After a long break the cycle restarts at session 1; otherwise advance.
+  // The next focus session auto-starts — the child only ever clicks Start
+  // once, at the very beginning.
+  const next = state.status === STATUS.LONG_BREAK ? 1 : state.sessionNumber + 1;
+  await startFocus(next);
 }
 
-// ── Activate timer tab ────────────────────────────────────────────────────────
-
-async function activateTimerTab() {
-  const state = await getState();
-
-  if (state.timerTabId) {
-    try {
-      await chrome.tabs.update(state.timerTabId, { active: true });
-    } catch (_e) {
-      // Tab was closed — recreate and activate
-      await ensureTimerTab();
-      const freshState = await getState();
-      if (freshState.timerTabId) {
-        try { await chrome.tabs.update(freshState.timerTabId, { active: true }); }
-        catch (_e2) { /* best effort */ }
-      }
-    }
-  }
-
-  // Bring the Chrome window to front (best-effort — may be blocked by OS)
-  const windowId = state.timerWindowId;
-  if (windowId) {
-    try { await chrome.windows.update(windowId, { focused: true }); }
-    catch (_e) { /* best effort */ }
-  }
+async function stopTimer() {
+  await chrome.alarms.clearAll();
+  await setState(phaseSnapshot({ status: STATUS.IDLE, sessionNumber: 1 }));
+  await updateActionIcon(STATUS.IDLE);
 }
 
-// ── Message Handler ───────────────────────────────────────────────────────────
+// ── Message handler (user actions from timer tab / popup) ────────────────────
 
 async function handleMessage(msg) {
   const state = await getState();
-  const settings = await getSettings();
 
-  switch (msg.type) {
+  switch (msg?.type) {
+    case MSG.START:
+      if (state.status !== STATUS.IDLE) break;
+      await startFocus(state.sessionNumber);
+      break;
 
-    // ── GET_STATE ────────────────────────────────────────────────────────────
-    case MSG.GET_STATE:
-      return await getState();
+    case MSG.PAUSE: {
+      if (!ACTIVE_STATUSES.includes(state.status) || state.isPaused) break;
+      const remaining = Math.max(0, state.startTime + state.phaseDuration - Date.now());
+      await chrome.alarms.clearAll();
+      await setState({ isPaused: true, pausedRemaining: remaining });
+      break;
+    }
 
-    // ── START ────────────────────────────────────────────────────────────────
-    case MSG.START: {
-      if (state.status !== STATUS.IDLE) return await getState();
-
-      const freshSettings = await getSettings();
-      const focusDuration = freshSettings.focusMinutes * 60 * 1000;
-      const warningDelay = freshSettings.focusMinutes - WARNING_MINUTES;
+    case MSG.RESUME: {
+      if (!state.isPaused || state.pausedRemaining == null) break;
       const now = Date.now();
+      const phaseEnd = now + state.pausedRemaining;
+      await setState({
+        isPaused: false,
+        pausedRemaining: null,
+        startTime: now,
+        phaseDuration: state.pausedRemaining,
+      });
+      if (BREAK_STATUSES.includes(state.status)) {
+        await chrome.alarms.create(ALARM.BREAK_END, { when: phaseEnd });
+        await ensureNagAlarm();
+      } else {
+        await scheduleFocusAlarms(phaseEnd);
+      }
+      break;
+    }
 
-      // Clear any stale alarms
-      await chrome.alarms.clear(ALARM.FOCUS_WARNING);
+    case MSG.STOP:
+      await stopTimer();
+      break;
+
+    case MSG.SKIP:
+      if (FOCUS_STATUSES.includes(state.status)) {
+        await startBreak({ natural: false });
+      } else if (BREAK_STATUSES.includes(state.status)) {
+        await finishBreak({ natural: false });
+      }
+      break;
+
+    case MSG.SNOOZE: {
+      // One snooze per session, only while the warning is showing
+      if (state.status !== STATUS.FOCUS_WARNING || state.snoozeUsed) break;
+      const newDuration = state.phaseDuration + SNOOZE_MINUTES * MINUTE;
+      const newEnd = state.startTime + newDuration;
       await chrome.alarms.clear(ALARM.FOCUS_END);
-
+      await chrome.alarms.clear(ALARM.FOCUS_WARNING);
       await setState({
         status: STATUS.FOCUS,
-        startTime: now,
-        phaseDuration: focusDuration,
-        isPaused: false,
-        pausedRemaining: null,
-        snoozeUsed: false,
-      });
-
-      // Only create warning alarm if session is longer than WARNING_MINUTES
-      if (freshSettings.focusMinutes > WARNING_MINUTES) {
-        await chrome.alarms.create(ALARM.FOCUS_WARNING, {
-          delayInMinutes: warningDelay,
-        });
-      }
-      await chrome.alarms.create(ALARM.FOCUS_END, {
-        delayInMinutes: freshSettings.focusMinutes,
-      });
-
-      await updateActionIcon(STATUS.FOCUS);
-      const newState = await getState();
-      await broadcastToTimerTab({ type: MSG.STATE_UPDATE, state: newState });
-      return newState;
-    }
-
-    // ── PAUSE ────────────────────────────────────────────────────────────────
-    case MSG.PAUSE: {
-      const activeStatuses = [STATUS.FOCUS, STATUS.FOCUS_WARNING, STATUS.BREAK, STATUS.LONG_BREAK];
-      if (!activeStatuses.includes(state.status) || state.isPaused) return await getState();
-
-      const remaining = Math.max(0, (state.startTime + state.phaseDuration) - Date.now());
-
-      // Clear all alarms — we'll recreate on resume
-      await chrome.alarms.clearAll();
-
-      await setState({
-        isPaused: true,
-        pausedRemaining: remaining,
-      });
-
-      await broadcastToTimerTab({ type: MSG.STATE_UPDATE, state: await getState() });
-      return await getState();
-    }
-
-    // ── RESUME ───────────────────────────────────────────────────────────────
-    case MSG.RESUME: {
-      if (!state.isPaused || state.pausedRemaining == null) return await getState();
-
-      const now = Date.now();
-      const remaining = state.pausedRemaining;
-      const newDuration = remaining;
-
-      await setState({
-        isPaused: false,
-        pausedRemaining: null,
-        startTime: now,
         phaseDuration: newDuration,
-      });
-
-      const isBreakPhase = state.status === STATUS.BREAK || state.status === STATUS.LONG_BREAK;
-
-      if (isBreakPhase) {
-        await chrome.alarms.create(ALARM.BREAK_END, {
-          when: now + remaining,
-        });
-      } else {
-        // Focus phase — re-register alarms
-        const warningAt = now + remaining - WARNING_MINUTES * 60 * 1000;
-        if (warningAt > now) {
-          await chrome.alarms.create(ALARM.FOCUS_WARNING, { when: warningAt });
-        }
-        await chrome.alarms.create(ALARM.FOCUS_END, { when: now + remaining });
-      }
-
-      await broadcastToTimerTab({ type: MSG.STATE_UPDATE, state: await getState() });
-      return await getState();
-    }
-
-    // ── STOP (reset to idle) ─────────────────────────────────────────────────
-    case MSG.STOP: {
-      await chrome.alarms.clearAll();
-      await setState({
-        status: STATUS.IDLE,
-        startTime: null,
-        phaseDuration: null,
-        isPaused: false,
-        pausedRemaining: null,
-        snoozeUsed: false,
-      });
-      await updateActionIcon(STATUS.IDLE);
-      await broadcastToTimerTab({ type: MSG.STATE_UPDATE, state: await getState() });
-      return await getState();
-    }
-
-    // ── SKIP ─────────────────────────────────────────────────────────────────
-    case MSG.SKIP: {
-      const isFocusPhase = state.status === STATUS.FOCUS || state.status === STATUS.FOCUS_WARNING;
-      const isBreakPhase = state.status === STATUS.BREAK || state.status === STATUS.LONG_BREAK;
-
-      if (isFocusPhase) {
-        await chrome.alarms.clear(ALARM.FOCUS_WARNING);
-        await chrome.alarms.clear(ALARM.FOCUS_END);
-        await chrome.alarms.clear(ALARM.SNOOZE_END);
-        await transitionToBreak();
-      } else if (isBreakPhase) {
-        await chrome.alarms.clear(ALARM.BREAK_END);
-        await endBreak();
-      }
-      return await getState();
-    }
-
-    // ── SNOOZE ───────────────────────────────────────────────────────────────
-    case MSG.SNOOZE: {
-      // Guard: only one snooze per session, only during focus-warning
-      if (state.snoozeUsed) return await getState();
-      if (state.status !== STATUS.FOCUS_WARNING) return await getState();
-
-      const snoozeMs = 5 * 60 * 1000;
-
-      // Clear existing focus alarms
-      await chrome.alarms.clear(ALARM.FOCUS_END);
-      await chrome.alarms.clear(ALARM.FOCUS_WARNING);
-
-      const newDuration = state.phaseDuration + snoozeMs;
-      const newEnd = state.startTime + newDuration;
-
-      await setState({
         snoozeUsed: true,
-        phaseDuration: newDuration,
-        status: STATUS.FOCUS, // back to regular focus state
       });
-
-      // Schedule snooze end
       await chrome.alarms.create(ALARM.SNOOZE_END, { when: newEnd });
-
+      // Warn again before the extended end (snooze > warning window, so future)
+      await chrome.alarms.create(ALARM.FOCUS_WARNING, {
+        when: newEnd - WARNING_MINUTES * MINUTE,
+      });
       await updateActionIcon(STATUS.FOCUS);
-      await broadcastToTimerTab({ type: MSG.STATE_UPDATE, state: await getState() });
-      return await getState();
-    }
-
-    // ── SETTINGS_CHANGED ─────────────────────────────────────────────────────
-    case MSG.SETTINGS_CHANGED: {
-      // Settings take effect at the start of the next phase.
-      // No action needed here — SW reads fresh settings at every transition.
-      return { ok: true };
+      break;
     }
 
     default:
-      console.warn('[PomoFomo BG] Unknown message type:', msg.type);
-      return null;
+      console.warn('[PomoFomo BG] Unknown message:', msg?.type);
   }
+
+  return getState();
 }
 
-// ── Tab Removed ───────────────────────────────────────────────────────────────
+// ── Timer tab lifecycle ───────────────────────────────────────────────────────
+// No tab id is stored: the timer tab is found by URL each time, which stays
+// correct across service worker restarts and user-opened duplicates.
 
-async function handleTabRemoved(tabId) {
-  const state = await getState();
-  if (tabId !== state.timerTabId) return;
+let creatingTimerTab = null; // dedupe concurrent ensureTimerTab() calls
 
-  // Clear saved tab reference
-  await setState({ timerTabId: null, timerWindowId: null });
-
-  // Recreate after a brief delay to avoid race with Chrome's tab cleanup
-  setTimeout(() => ensureTimerTab(), 600);
-  console.log('[PomoFomo] Timer tab was closed, recreating...');
+async function findTimerTabs() {
+  const tabs = await chrome.tabs.query({});
+  return tabs.filter(t => t.url && t.url.startsWith(TIMER_URL));
 }
 
-// ── Tab Updated (push state when timer tab finishes loading) ─────────────────
+async function ensureTimerTab() {
+  const existing = await findTimerTabs();
 
-async function handleTabUpdated(tabId, changeInfo) {
-  // Only care about fully-loaded pages
-  if (changeInfo.status !== 'complete') return;
+  if (existing.length > 0) {
+    const [keep, ...extras] = existing;
+    for (const extra of extras) {
+      try { await chrome.tabs.remove(extra.id); } catch { /* already gone */ }
+    }
+    if (!keep.pinned) {
+      try { await chrome.tabs.update(keep.id, { pinned: true }); } catch { /* gone */ }
+    }
+    return keep;
+  }
 
-  const state = await getState();
-  if (tabId !== state.timerTabId) return;
+  if (!creatingTimerTab) {
+    creatingTimerTab = chrome.tabs
+      .create({ url: TIMER_URL, pinned: true, active: false })
+      .finally(() => { creatingTimerTab = null; });
+  }
+  return creatingTimerTab;
+}
 
-  // Give timer.js ~400 ms to register its chrome.runtime.onMessage listener
-  // before we push the current state. Without this delay the message arrives
-  // before the listener is ready and the tab stays frozen on idle.
+async function activateTimerTab() {
+  try {
+    const tab = await ensureTimerTab();
+    await chrome.tabs.update(tab.id, { active: true });
+    // Bring the window forward too — best-effort, the OS may refuse
+    await chrome.windows.update(tab.windowId, { focused: true });
+  } catch { /* best effort */ }
+}
+
+function handleTabRemoved(_tabId, removeInfo) {
+  if (removeInfo.isWindowClosing) return; // don't fight a closing window
+  // Recreate after a beat if the closed tab was ours (cheap query either way)
   setTimeout(async () => {
     try {
-      const freshState = await getState();
-      await broadcastToTimerTab({ type: MSG.STATE_UPDATE, state: freshState });
-      console.log('[PomoFomo] Pushed state to timer tab after load:', freshState.status);
-    } catch (_e) {
-      // Timer tab may have been closed again — ignore.
-    }
-  }, 400);
+      if ((await findTimerTabs()).length === 0) await ensureTimerTab();
+    } catch { /* browser may be shutting down */ }
+  }, 500);
 }
 
-// ── Broadcast to Timer Tab ────────────────────────────────────────────────────
+// ── Notifications ─────────────────────────────────────────────────────────────
 
-async function broadcastToTimerTab(message) {
-  const state = await getState();
-  if (!state.timerTabId) return;
-
+async function showBreakNotification(isLong, breakMinutes) {
   try {
-    await chrome.tabs.sendMessage(state.timerTabId, message);
-  } catch (_e) {
-    // Timer tab may not have its listener ready yet (still loading).
-    // This is fine — timer.js calls GET_STATE on load to pull current state.
+    await chrome.notifications.clear(NOTIFICATION_ID);
+    await chrome.notifications.create(NOTIFICATION_ID, {
+      type: 'basic',
+      iconUrl: chrome.runtime.getURL('assets/icons/icon128.png'),
+      title: isLong ? '🐉 Long break time!' : '🐉 Break time!',
+      message: isLong
+        ? `Amazing work! Time for a ${breakMinutes}-minute break. You earned it!`
+        : `Great focus! Take a quick ${breakMinutes}-minute break.`,
+      priority: 2,
+    });
+  } catch (e) {
+    console.warn('[PomoFomo BG] Notification failed:', e);
   }
 }
 
-// ── Update Toolbar Icon ───────────────────────────────────────────────────────
+async function handleNotificationClicked(notificationId) {
+  if (notificationId !== NOTIFICATION_ID) return;
+  await chrome.notifications.clear(NOTIFICATION_ID);
+  await activateTimerTab();
+}
+
+// ── Nag alarm (re-focus timer tab during breaks) ─────────────────────────────
+
+async function ensureNagAlarm() {
+  const settings = await getSettings();
+  if (settings.nagDuringBreak) {
+    await chrome.alarms.create(ALARM.NAG, {
+      delayInMinutes: NAG_PERIOD_MINUTES,
+      periodInMinutes: NAG_PERIOD_MINUTES,
+    });
+  } else {
+    await chrome.alarms.clear(ALARM.NAG);
+  }
+}
+
+// React to the nag setting being toggled mid-break
+async function handleStorageChanged(changes, area) {
+  if (area !== 'sync' || !('nagDuringBreak' in changes)) return;
+  const state = await getState();
+  if (BREAK_STATUSES.includes(state.status) && !state.isPaused) {
+    await ensureNagAlarm();
+  }
+}
+
+// ── Toolbar icon (colored dot per phase) ─────────────────────────────────────
+
+const ICON_COLORS = {
+  [STATUS.IDLE]:          '#9A8070',
+  [STATUS.FOCUS]:         '#F5A623',
+  [STATUS.FOCUS_WARNING]: '#E8842A',
+  [STATUS.BREAK]:         '#2BBFA0',
+  [STATUS.LONG_BREAK]:    '#2BBFA0',
+};
 
 async function updateActionIcon(status) {
-  const colors = {
-    [STATUS.IDLE]:          '#9A8070',
-    [STATUS.FOCUS]:         '#F5A623',
-    [STATUS.FOCUS_WARNING]: '#E8842A',
-    [STATUS.BREAK]:         '#2BBFA0',
-    [STATUS.LONG_BREAK]:    '#2BBFA0',
-  };
-  const color = colors[status] ?? '#9A8070';
-
   try {
     const canvas = new OffscreenCanvas(32, 32);
     const ctx = canvas.getContext('2d');
 
-    // Circle background
     ctx.beginPath();
     ctx.arc(16, 16, 15, 0, 2 * Math.PI);
-    ctx.fillStyle = color;
+    ctx.fillStyle = ICON_COLORS[status] ?? ICON_COLORS[STATUS.IDLE];
     ctx.fill();
 
-    // White "P" letter mark
     ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     ctx.font = 'bold 16px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('P', 16, 17);
 
-    const imageData = ctx.getImageData(0, 0, 32, 32);
-    await chrome.action.setIcon({ imageData });
+    await chrome.action.setIcon({ imageData: ctx.getImageData(0, 0, 32, 32) });
   } catch (e) {
     console.warn('[PomoFomo BG] Could not update action icon:', e);
   }
 }
 
-// ── Session Log ───────────────────────────────────────────────────────────────
+// ── Session log ───────────────────────────────────────────────────────────────
 
 async function appendLog(entry) {
-  const state = await getState();
-  const logs = Array.isArray(state.logs) ? state.logs : [];
-
-  const newEntry = {
-    id: crypto.randomUUID(),
-    ...entry,
-  };
-
-  // Keep last 1000 entries to avoid unbounded storage growth
-  const trimmed = [...logs, newEntry].slice(-1000);
+  const { logs } = await getState();
+  const trimmed = [...(Array.isArray(logs) ? logs : []), { id: crypto.randomUUID(), ...entry }]
+    .slice(-MAX_LOG_ENTRIES);
   await setState({ logs: trimmed });
 }
