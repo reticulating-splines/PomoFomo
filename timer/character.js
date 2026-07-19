@@ -142,10 +142,12 @@ class BookController extends CharacterController {
     }
 
     if (this.currentState === 'break-active' || this.currentState === 'break-done') {
-      // sessionNumber during a break = the session that just finished
+      // sessionNumber during a break = the session that just finished.
+      // Must set an explicit display value: '' would fall back to the
+      // stylesheet rule that hides shelf-book--2..4 by default.
       for (let i = 1; i <= 4; i++) {
         const book = this.svgEl.querySelector(`.shelf-book--${i}`);
-        if (book) book.style.display = i <= timerState.sessionNumber ? '' : 'none';
+        if (book) book.style.display = i <= timerState.sessionNumber ? 'inline' : 'none';
       }
     }
   }
