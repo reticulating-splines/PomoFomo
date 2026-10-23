@@ -1,153 +1,50 @@
 <svg class="char page" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <!--
-    PomoFomo — "Page" the book.
-    A chunky upright hardcover with a face on its front cover. The cover
-    hinges at the spine (x≈55) so it can flap open like a wing; the face is a
-    sibling layer so it never squashes. State classes (page--idle, …) on this
-    root are styled in characters/page.css.
+    PomoFomo — "Page" the book, painted. A chunky upright hardcover with a
+    face on its front cover. The cover hinges at the spine (x≈55) so it can
+    flap open like a wing; the face is a sibling layer so it never squashes.
+    Every part is layered washes (base, glazes, pooled rim, granulation, a
+    broken ink line) with no ids or filters, so it animates cheaply and can
+    repeat in one document. State classes live in characters/page.css.
   -->
-  <ellipse class="page__shadow" cx="100" cy="180" rx="50" ry="6" fill="rgba(42,35,66,0.10)"/>
-
+  <g class="page__shadow"><path d="M100 174c10 0 20 1 28 2s16 1 19 2s1 3-1 4s-8 2-16 3s-20 1-30 1s-22-1-29-1s-14-2-17-3s-3-3 0-4s9-2 16-3s20-1 30-1Z" fill="#5D4B73" opacity=".11"/><path d="M97 176c8 0 19 1 24 1s8 2 8 3s-3 2-8 2s-16 1-24 1s-18 0-24-1s-10-1-10-2s5-2 11-2s15-1 23-2Z" fill="#5D4B73" opacity=".08"/></g>
   <g class="page__root">
     <g class="page__inner">
-
-      <!-- Feet + arms sit behind the book so they emerge from it -->
-      <g class="page__feet" fill="#B8325F">
-        <ellipse cx="79" cy="171.5" rx="12.5" ry="7.5"/>
-        <ellipse cx="121" cy="171.5" rx="12.5" ry="7.5"/>
-        <ellipse cx="76" cy="174" rx="6" ry="2.6" fill="#D9487A" opacity=".35"/>
-        <ellipse cx="118" cy="174" rx="6" ry="2.6" fill="#D9487A" opacity=".35"/>
-      </g>
-      <g class="page__arm-l">
-        <path d="M49 114 L29 137" stroke="#B8325F" stroke-width="11" stroke-linecap="round"/>
-        <circle cx="28" cy="138.5" r="6.8" fill="#B8325F"/>
-      </g>
-      <g class="page__arm-r">
-        <path d="M151 114 L171 137" stroke="#B8325F" stroke-width="11" stroke-linecap="round"/>
-        <circle cx="172" cy="138.5" r="6.8" fill="#B8325F"/>
-      </g>
-
-      <!-- Back cover + page block (pages show on the right, and inside when the cover opens) -->
-      <g class="page__body">
-        <rect x="50" y="33" width="106" height="136" rx="9" fill="#B8325F"/>
-        <rect x="56" y="37" width="96" height="128" rx="4" fill="#FFF6E3"/>
-        <g stroke="#EADBC0" stroke-linecap="round">
-          <path stroke-width="2.4" d="M66 56 H128 M66 65 H134 M66 74 H120 M66 83 H132 M66 92 H126 M66 101 H134 M66 110 H112 M66 128 H130 M66 137 H134 M66 146 H118"/>
-          <path stroke-width="1" d="M145 44 H151 M145 50 H151 M145 56 H151 M145 62 H151 M145 68 H151 M145 74 H151 M145 80 H151 M145 86 H151 M145 92 H151 M145 98 H151 M145 104 H151 M145 110 H151 M145 116 H151 M145 122 H151 M145 128 H151 M145 134 H151 M145 140 H151 M145 146 H151 M145 152 H151 M145 158 H151"/>
-        </g>
-      </g>
-
-      <!-- Ribbon bookmark: tucked between the pages, pokes out the top like a tuft -->
-      <g class="page__ribbon">
-        <path d="M112 38 C112 26 115 18 119 8 L122.5 13.5 L127.5 9.5 C124 19 120.5 27 120.5 38 Z" fill="#2FB5A5"/>
-        <path d="M117 38 C117 27 120 19 124 11.2 L127.5 9.5 C124 19 120.5 27 120.5 38 Z" fill="#1E7F78" opacity=".28"/>
-        <path d="M114.4 34 C114.4 26 116.2 19.5 118.8 13" fill="none" stroke="#8EE0D4" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>
-      </g>
-
-      <!-- Front cover: hinges at the spine -->
-      <g class="page__cover">
-        <path d="M54 30 H132 A12 12 0 0 1 144 42 V158 A12 12 0 0 1 132 170 H54 Z" fill="#D9487A"/>
-        <!-- watercolour: colour variation + blooms (static) -->
-        <path d="M60 126 C66 118 82 120 89 131 C94 141 85 153 72 153 C62 152 56 139 60 126 Z" fill="#E45E7E" opacity=".38"/>
-        <path d="M106 138 C117 132 131 136 133 147 C134 156 123 162 112 159 C103 156 100 145 106 138 Z" fill="#C43B6C" opacity=".3"/>
-        <path d="M63 54 C70 46 93 44 106 49 C115 53 112 61 101 63 C88 65 73 67 66 63 C61 60 60 57 63 54 Z" fill="#EE6B97" opacity=".38"/>
-        <path d="M128 30 H132 A12 12 0 0 1 144 42 V158 A12 12 0 0 1 132 170 H54 V163 H130 A7 7 0 0 0 137 156 V40 A10 10 0 0 0 128 30 Z" fill="#B8325F" opacity=".75"/>
-        <path d="M58 163.6 H130 A7 7 0 0 0 137 156 V40 A10 10 0 0 0 129 30.6" fill="none" stroke="#9C2452" stroke-width="1.4" stroke-linecap="round" opacity=".32"/>
-        <path d="M63 40.6 C70 36.6 98 36 112 38.4 C116.5 39.4 115.5 43.6 110 44 C96 45.6 74 45.6 65 44.6 C60.6 44 60 42 63 40.6 Z" fill="#F28AAE" opacity=".8"/>
-        <circle cx="121.5" cy="40.8" r="3.4" fill="#F28AAE" opacity=".8"/>
-        <path d="M124 30 H132 A12 12 0 0 1 144 42 V50 Z" fill="#FFC93C"/>
-        <path d="M131 32 A10 10 0 0 1 141.5 41 L141.5 44" fill="none" stroke="#FFE08A" stroke-width="2" stroke-linecap="round" opacity=".8"/>
-        <path d="M144 150 V158 A12 12 0 0 1 132 170 H124 Z" fill="#E9AE1C"/>
-        <path d="M143.6 152 L126.5 169.5" stroke="#C98F0E" stroke-width="1.2" opacity=".35"/>
-      </g>
-
-      <!-- Spine (stays put while the cover flaps) -->
-      <g class="page__spine">
-        <path d="M52 30 H57 V170 H52 A12 12 0 0 1 40 158 V42 A12 12 0 0 1 52 30 Z" fill="#B8325F"/>
-        <path d="M44 60 C46 57.5 50 57.5 52 60 V138 C50 141 46 141 44 138 Z" fill="#D9487A" opacity=".3"/>
-        <rect x="40" y="45" width="17" height="5" fill="#FFC93C"/>
-        <rect x="40" y="150" width="17" height="5" fill="#E9AE1C"/>
-        <rect x="55.5" y="30" width="2" height="140" fill="#2A2342" opacity=".12"/>
-      </g>
-
-      <!-- Face -->
+      <g class="page__feet"><path d="M79 164c3 0 6 1 8 2s4 3 4 4s0 4-1 5s-4 3-7 3s-6 1-8 0s-5-2-6-3s-3-3-2-5s2-3 4-4s5-2 8-2Z" fill="#B8386B"/><path d="M78 166c1 0 3 1 5 1s2 1 3 2s-1 2-2 2s-2 1-3 2s-4 0-6 0s-3-1-4-2s-1-2 0-2s0-2 2-2s3-1 5-1Z" fill="#F08594" opacity=".56"/><path d="M79 164c3 0 6 1 8 2s4 3 4 4s0 4-1 5s-4 3-7 3s-6 1-8 0s-5-2-6-3s-3-3-2-5s2-3 4-4s5-2 8-2ZM72 168c-2 1-3 2-4 3s0 2 1 3s4 2 6 2s6 0 8 0s4-1 5-2s2-2 1-3s-1-3-3-3s-5-2-7-2s-5 1-7 2Z" fill="#8E2552" fill-rule="evenodd" opacity="0.45"/><path d="M90 175c-1 1-4 3-7 4s-5 0-8-1s-5-2-7-3s-2-3-1-5s3-3 4-4" fill="none" stroke="#6E1E40" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/><path d="M121 164c3 0 6 1 8 2s4 3 4 4s1 4-1 5s-4 3-7 3s-6 0-8 0s-6-2-7-3s-2-3-1-5s2-3 4-4s5-2 8-2Z" fill="#B8386B"/><path d="M120 166c1 0 3 1 5 2s2 0 2 1s0 2 0 2s-3 2-5 2s-4 0-5 0s-3-1-4-2s-1-1 0-2s1-1 2-2s3-1 5-1Z" fill="#F08594" opacity=".56"/><path d="M121 164c3 0 6 1 8 2s4 3 4 4s1 4-1 5s-4 3-7 3s-6 0-8 0s-6-2-7-3s-2-3-1-5s2-3 4-4s5-2 8-2ZM114 168c-2 1-3 2-3 3s-1 1 1 3s3 3 5 3s6 1 8 0s4-3 5-4s2-1 2-2s-2-3-4-4s-5-1-7-1s-6 1-7 2Z" fill="#8E2552" fill-rule="evenodd" opacity="0.45"/><path d="M132 175c-1 0-4 3-7 3s-6 0-8 0s-5-2-7-3s-2-3-1-5s3-3 4-4" fill="none" stroke="#6E1E40" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/></g>
+      <g class="page__arm-l"><path d="M49 114L31 136" stroke="#B8386B" stroke-width="8.5" stroke-linecap="round"/><path d="M49.8 115.2L32 135" stroke="#F08594" stroke-width="3" stroke-linecap="round" opacity=".45"/><path d="M47.5 118.5L27.6 137.8" stroke="#6E1E40" stroke-width="1.2" stroke-linecap="round" opacity=".45"/><path d="M32 132c1 0 3 0 4 1s2 2 2 3s0 3-1 4s-2 3-3 3s-3 1-4 0s-3-1-4-2s0-3 0-5s1-2 2-3s3-1 4-1Z" fill="#B8386B"/><path d="M33 133c0 0 1 0 2 1s1 2 1 2s0 1 0 2s-1 1-2 1s-2 0-3 0s-1-1-1-1s-1-1-1-2s1-1 1-2s2-1 3-1Z" fill="#F08594" opacity=".63"/><path d="M32 132c1 0 3 0 4 1s2 2 2 3s0 3-1 4s-2 3-3 3s-3 1-4 0s-3-1-4-2s0-3 0-5s1-2 2-3s3-1 4-1ZM29 134c-1 1-2 2-2 3s1 2 1 2s2 2 2 2s3 1 4 1s2-1 2-2s1-2 1-3s-1-2-2-3s-2-1-3-1s-2 0-3 1Z" fill="#8E2552" fill-rule="evenodd" opacity="0.45"/><path d="M38 136c0 1 0 3-1 4s-2 3-3 3s-3 1-4 0s-3-1-4-2s0-4 0-5" fill="none" stroke="#6E1E40" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/></g>
+      <g class="page__arm-r"><path d="M151 114L169 136" stroke="#B8386B" stroke-width="8.5" stroke-linecap="round"/><path d="M150.2 115.2L168 135" stroke="#F08594" stroke-width="3" stroke-linecap="round" opacity=".45"/><path d="M152.5 118.5L172.4 137.8" stroke="#6E1E40" stroke-width="1.2" stroke-linecap="round" opacity=".45"/><path d="M168 131c1 0 3 1 4 2s2 2 2 3s0 3-1 4s-2 3-3 3s-3 1-4 0s-3-1-4-3s-1-2 0-4s1-2 2-3s3-2 4-2Z" fill="#B8386B"/><path d="M167 133c1 0 2 0 2 1s1 1 2 2s0 1-1 2s0 0-1 1s-3 0-3 0s-2-1-2-1s-1-2-1-2s1-2 2-2s2-1 2-1Z" fill="#F08594" opacity=".63"/><path d="M168 131c1 0 3 1 4 2s2 2 2 3s0 3-1 4s-2 3-3 3s-3 1-4 0s-3-1-4-3s-1-2 0-4s1-2 2-3s3-2 4-2ZM165 134c-1 1-1 2-2 3s0 2 1 3s1 1 2 1s3 1 4 1s2-1 2-2s1-2 1-3s-1-3-2-3s-2-1-3-1s-2 1-3 1Z" fill="#8E2552" fill-rule="evenodd" opacity="0.45"/><path d="M174 136c0 1 0 3-1 4s-2 3-3 3s-3 1-4 1s-3-3-3-4s-2-3-2-4" fill="none" stroke="#6E1E40" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/></g>
+      <g class="page__body"><path d="M59 33c4 0 10 0 15 0s9 0 14 0s10 0 15 0s10 0 15 0s9 0 14 0s11 0 15 0s5 1 6 3s3 2 3 6s0 10 0 14s0 11 0 16s0 9 0 14s0 10 0 15s0 10 0 15s0 10 0 15s0 9 0 14s0 11 0 15s-1 5-3 6s-3 2-6 3s-10 0-15 0s-10 0-14 0s-10 0-15 0s-10 0-14 0s-10 0-15 0s-11 0-15 0s-5-1-6-3s-3-3-3-6s0-10 0-15s0-10 0-15s0-9 0-14s0-10 0-15s0-10 0-15s0-10 0-15s0-9 0-14s0-11 0-15s1-5 3-6s3-2 6-3Z" fill="#B8386B"/><path d="M59 33c4 0 10 0 15 0s9 0 14 0s10 0 15 0s10 0 15 0s9 0 14 0s11 0 15 0s5 1 6 3s3 2 3 6s0 10 0 14s0 11 0 16s0 9 0 14s0 10 0 15s0 10 0 15s0 10 0 15s0 9 0 14s0 11 0 15s-1 5-3 6s-3 2-6 3s-10 0-15 0s-10 0-14 0s-10 0-15 0s-10 0-14 0s-10 0-15 0s-11 0-15 0s-5-1-6-3s-3-3-3-6s0-10 0-15s0-10 0-15s0-9 0-14s0-10 0-15s0-10 0-15s0-10 0-15s0-9 0-14s0-11 0-15s1-5 3-6s3-2 6-3ZM54 37c-1 1-1 2-1 5s-2 10-2 15s1 10 2 14s-1 10-1 15s0 10 0 15s-1 10-1 15s0 9 1 14s-1 11-1 15s0 11 1 15s1 3 2 5s2 2 5 3s10-2 15-2s10 1 15 2s9 0 14-1s10-1 14-1s11 0 15 0s11 0 14 0s5 0 6-1s2-2 2-5s-1-10-1-15s1-10 1-14s-1-10-1-15s0-10 1-15s1-10 1-15s-1-9-2-14s1-11 1-16s0-11 0-14s-2-3-3-4s-1-4-4-4s-10 1-15 1s-9 0-14-1s-10 0-15 0s-10 0-15 0s-9 0-14 0s-11 2-14 2s-5 0-6 1Z" fill="#8E2552" fill-rule="evenodd" opacity="0.4"/><path d="M60 37c3 0 10 0 15 0s9 0 14 0s10 0 15 0s10 0 15 0s9 0 14 0s12 0 15 0s2 0 3 1s1 0 1 3s0 9 0 13s0 9 0 14s0 9 0 13s0 9 0 13s0 9 0 14s0 8 0 13s0 9 0 13s0 9 0 14s0 10 0 13s-1 2-1 3s0 1-3 1s-10 0-15 0s-9 0-14 0s-10 0-15 0s-10 0-15 0s-10 0-14 0s-12 0-15 0s-2-1-3-1s-1 0-1-3s0-9 0-13s0-9 0-13s0-9 0-14s0-9 0-13s0-9 0-14s0-9 0-13s0-9 0-13s0-9 0-13s0-11 0-14s1-2 1-3s0-1 3-1Z" fill="#FFF3DD"/><path d="M101 67c1-1 4 0 6 0s6 1 8 1s5-1 7-1s4 1 7 1s4-1 7-1s7 0 9 1s1 1 1 2s0 0-1 1s0 6 0 9s1 7 1 10s0 4 0 7s1 7 1 10s0 8 0 11s-1 6-1 9s-1 6-1 9s2 5 2 8s-2 8-2 11s1 1 2 2s-1 1-2 1s-5 0-8 0s-6-1-9-1s-4 2-6 2s-5-2-8-2s-5 0-7 1s-5 1-6 1s-2-2-2-3s0 1 0-1s-1-5-1-8s1-7 1-10s0-5 0-9s0-9 0-12s-2-5-2-8s2-7 2-10s-1-6-1-9s0-6 0-9s0-8 0-10s1-2 1-2s0-1 2-1Z" fill="#F1DDBB" opacity=".31"/><path d="M108 80c1 0 2 0 4 0s4 0 6 1s3 1 6 1s5 0 7 0s5-2 7-2s5 2 6 2s1 0 1 0s0 0 0 1s0 7 1 9s1 4 0 6s-1 6-1 9s-1 5-1 8s1 4 1 6s0 4 0 7s0 6 0 9s1 4 1 6s0 7 0 9s-1 1-2 2s-1 0-2 1s-3-1-5 0s-5 1-7 1s-2 0-4 0s-6-2-8-3s-3 1-5 1s-7 2-8 1s2-3 2-3s-2 3-2 1s0-6 0-8s1-6 1-9s0-5 0-7s-1-4-1-7s-2-6-2-9s1-3 2-6s1-7 1-10s-2-3-1-6s1-6 1-7s-2-1-1-2s1-1 3-2Z" fill="#F1DDBB" opacity=".31"/><path d="M144 80h0M65 68h0M64 160h0M122 134h0M126 148h0M127 91h0M82 132h0M89 95h0M66 139h0M88 107h0M116 73h0M71 158h0M143 82h0M119 101h0M129 158h0M102 152h0M109 161h0M129 84h0M123 39h0M104 137h0M64 96h0M149 115h0" stroke="#C9AF84" stroke-width="1.1" stroke-linecap="round" opacity="0.3"/><path d="M60 37c3 0 10 0 15 0s9 0 14 0s10 0 15 0s10 0 15 0s9 0 14 0s12 0 15 0s2 0 3 1s1 0 1 3s0 9 0 13s0 9 0 14s0 9 0 13s0 9 0 13s0 9 0 14s0 8 0 13s0 9 0 13s0 9 0 14s0 10 0 13s-1 2-1 3s0 1-3 1s-10 0-15 0s-9 0-14 0s-10 0-15 0s-10 0-15 0s-10 0-14 0s-12 0-15 0s-2-1-3-1s-1 0-1-3s0-9 0-13s0-9 0-13s0-9 0-14s0-9 0-13s0-9 0-14s0-9 0-13s0-9 0-13s0-9 0-13s0-11 0-14s1-2 1-3s0-1 3-1ZM58 39c0 1-1 0-1 2s0 9 0 14s1 8 1 13s-1 8-1 13s1 9 1 13s0 9 0 14s0 9 0 13s-1 9-1 14s0 8 0 13s0 10 0 13s1 1 1 2s-1 0 2 0s10 1 15 1s9-1 14-1s10 1 15 1s10 0 15 0s9-1 14-1s12-1 15-1s1 1 1 0s1 1 1-1s1-9 1-13s-1-9-1-14s1-9 1-13s-1-9-1-13s0-9 0-14s1-8 1-13s-1-9-1-13s0-9 0-14s0-10 0-13s-1-1-1-1s2-2-1-2s-10 0-15 0s-9 0-14 0s-10 0-15 0s-10 0-15 0s-10 0-14 0s-12 1-15 2s-1-1-2-1Z" fill="#D9C29C" fill-rule="evenodd" opacity="0.5"/><path d="M66 57H126M66 66H135M66 75H120M66 84H130M66 93H126M66 102H135M66 111H111M66 129H130M66 138H135M66 147H120" stroke="#E2CFAE" stroke-width="2.2" stroke-linecap="round" fill="none"/><path d="M145 44h6M145 50h6M145 56h6M145 62h6M145 68h6M145 74h6M145 80h6M145 86h6M145 92h6M145 98h6M145 104h6M145 110h6M145 116h6M145 122h6M145 128h6M145 134h6M145 140h6M145 146h6M145 152h6M145 158h6" stroke="#D8C39E" stroke-width=".9" stroke-linecap="round"/></g>
+      <g class="page__ribbon"><path d="M111 38c-2-2-1-7 0-11s2-8 3-11s3-9 4-9s3 5 5 6s5-7 6-5s-2 7-3 11s-2 7-3 10s2 8 0 9s-11 2-12 0Z" fill="#3DB4A4"/><path d="M115 36c-1-1 0-5 0-8s2-6 3-9s1-7 2-8s1 5 3 5s3-5 3-4s-1 7-2 10s-1 4-1 7s1 6-1 7s-5 2-7 0Z" fill="#1F7F77" opacity=".5"/><path d="M114 32c-1-1 0-4 0-6s0-5 1-7s0-5 1-5s1 3 1 3s2-4 2-3s0 5-1 7s0 4-1 6s1 5 0 5s-3 2-3 0Z" fill="#C9F1EA" opacity=".33"/><path d="M115 29c-1-1 0-3 0-4s0-3 0-5s1-3 1-3s1 2 1 2s1-2 1-2s0 3 0 5s-1 2-1 3s0 3 0 4s-2 1-2 0Z" fill="#C9F1EA" opacity=".33"/><path d="M111 38c-2-2-1-7 0-11s2-8 3-11s3-9 4-9s3 5 5 6s5-7 6-5s-2 7-3 11s-2 7-3 10s2 8 0 9s-11 2-12 0ZM122 37c1-2-2-5-1-8s3-7 4-10s3-10 3-11s-4 6-6 5s-2-6-4-6s-2 6-3 9s-2 8-3 11s-2 8 0 10s8 1 10 0Z" fill="#1F7F77" fill-rule="evenodd" opacity="0.35"/><path d="M111 38c0-2-1-8 0-11s2-8 3-11s3-8 4-10M129 8c-1 1-2 7-3 11s-2 7-3 10s0 8 0 9" fill="none" stroke="#6E1E40" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/></g>
+      <g class="page__cover"><path d="M54 30c2-2 9 0 13 0s9 0 13 0s9 0 13 0s8 0 13 0s9 0 13 0s9-1 13 0s7 1 8 4s3 5 4 8s0 8 0 13s0 9 0 13s0 8 0 13s0 8 0 13s0 8 0 12s0 9 0 13s0 9 0 13s0 9 0 13s1 9 0 13s-1 6-4 8s-5 4-8 4s-9 0-13 0s-9 0-13 0s-8 0-13 0s-9 0-13 0s-9 0-13 0s-11 2-13 0s0-8 0-13s0-8 0-13s0-8 0-13s0-8 0-12s0-9 0-13s0-8 0-12s0-9 0-13s0-9 0-13s0-8 0-13s0-8 0-12s-2-11 0-13Z" fill="#DA5683"/><path d="M144 112c3 2 1 19 0 28s1 17-1 22s-5 6-11 7s-20 0-28 0s-18 1-20-1s3-8 8-12s14-5 20-10s9-13 14-19s15-17 18-15Z" fill="#B8386B" opacity=".21"/><path d="M140 118c3 1 1 16 1 23s0 15-2 19s-3 5-9 6s-16 0-23 0s-16 1-17-1s2-7 6-10s12-4 17-8s8-11 12-16s13-15 15-13Z" fill="#B8386B" opacity=".21"/><path d="M137 124c2 1 0 13 0 19s0 12-2 15s-2 4-7 5s-13 0-19 0s-12 1-14-1s3-5 6-8s10-4 14-7s6-8 9-12s10-13 13-11Z" fill="#B8386B" opacity=".21"/><path d="M73 127c4-1 8 2 12 4s9 3 11 6s0 10-1 14s-3 10-6 12s-8 1-12 0s-7-2-10-5s-9-6-10-10s0-12 3-15s9-6 13-6Z" fill="#9C58A8" opacity=".09"/><path d="M74 130c3-1 6 1 10 3s8 3 9 6s0 8-1 11s-2 8-5 10s-7 1-10 1s-6-3-9-5s-7-5-8-9s1-9 3-12s7-5 11-5Z" fill="#9C58A8" opacity=".09"/><path d="M74 133c3-1 6 1 8 2s7 3 8 5s0 6-1 9s-1 7-3 8s-6 1-9 1s-5-2-7-4s-6-4-7-7s1-8 3-10s6-4 8-4Z" fill="#9C58A8" opacity=".09"/><path d="M100 37c7 0 14 1 20 2s17 2 20 4s0 4-2 6s-9 4-16 5s-15 2-22 2s-16-1-22-2s-10-3-12-5s-4-4-3-6s8-4 14-5s16-1 23-1Z" fill="#F08594" opacity=".19"/><path d="M100 38c6 1 12 1 17 2s14 2 16 3s1 4-1 6s-8 3-13 4s-13 1-19 1s-14 0-19-1s-8-3-10-5s-3-3-2-5s6-3 11-4s14-1 20-1Z" fill="#F08594" opacity=".19"/><path d="M100 40c5 0 9 0 14 1s11 2 13 3s1 3-1 4s-6 3-11 4s-10 1-15 1s-11-1-15-2s-7-2-8-3s-3-3-2-4s5-3 9-4s11 0 16 0Z" fill="#F08594" opacity=".19"/><path d="M131 57c2 0 4 3 5 6s3 7 4 11s1 12 0 16s-4 6-6 7s-4 0-6-1s-4-3-5-6s-2-11-1-16s2-10 3-13s4-4 6-4Z" fill="#9C58A8" opacity=".07"/><path d="M131 60c2 1 3 3 4 5s3 6 4 10s0 10-1 13s-3 5-5 6s-3 0-4-1s-4-2-5-5s-1-9-1-13s2-9 3-11s3-4 5-4Z" fill="#9C58A8" opacity=".07"/><path d="M131 64c1 0 3 2 4 4s2 4 2 7s1 9 0 11s-3 4-4 5s-3 0-4-1s-3-2-4-4s0-7 0-11s1-7 2-9s3-2 4-2Z" fill="#9C58A8" opacity=".07"/><path d="M81 55c3-1 7-2 9-1s4 2 5 4s2 4 1 5s-4 4-7 5s-7 2-10 2s-8 0-10-1s-1-4-1-5s1-5 3-6s6-2 10-3Z" fill="#FFF7EA" opacity=".24"/><path d="M81 57c2 0 5-1 7 0s2 1 3 2s1 3 0 4s-3 2-5 3s-4 1-6 1s-5 0-6 0s-1-3-1-4s1-3 2-4s4-1 6-2Z" fill="#FFF7EA" opacity=".24"/><path d="M72 148h0M127 131h0M78 158h0M110 127h0M80 160h0M119 119h0M102 155h0M95 151h0M114 77h0M132 59h0M117 58h0M105 53h0M106 116h0M113 99h0M136 113h0M63 123h0M115 140h0M104 75h0M80 98h0M127 126h0M138 147h0M74 113h0M63 57h0M71 57h0M115 146h0M128 97h0M136 161h0M132 157h0M132 138h0M69 86h0M101 154h0M90 123h0M83 154h0M103 127h0M67 54h0M137 95h0M108 49h0M73 118h0M107 87h0M127 45h0M141 150h0M70 121h0M119 98h0M136 138h0M74 159h0M120 141h0M71 37h0M111 137h0M142 76h0M113 133h0M122 104h0M85 130h0M117 155h0M71 82h0M83 124h0M57 128h0M108 167h0M97 71h0M132 118h0M99 71h0M112 77h0M137 51h0M90 78h0M61 131h0M102 106h0M121 116h0M91 64h0M104 142h0M128 166h0M130 50h0M130 148h0M122 107h0M106 50h0M81 90h0M78 116h0M79 158h0M128 105h0M89 81h0M99 85h0M89 121h0M97 99h0M83 79h0M60 168h0M83 95h0M107 108h0M127 91h0M96 134h0M138 86h0M114 168h0M91 153h0" stroke="#8E2552" stroke-width="1.1" stroke-linecap="round" opacity="0.26"/><path d="M54 30c2-2 9 0 13 0s9 0 13 0s9 0 13 0s8 0 13 0s9 0 13 0s9-1 13 0s7 1 8 4s3 5 4 8s0 8 0 13s0 9 0 13s0 8 0 13s0 8 0 13s0 8 0 12s0 9 0 13s0 9 0 13s0 9 0 13s1 9 0 13s-1 6-4 8s-5 4-8 4s-9 0-13 0s-9 0-13 0s-8 0-13 0s-9 0-13 0s-9 0-13 0s-11 2-13 0s0-8 0-13s0-8 0-13s0-8 0-13s0-8 0-12s0-9 0-13s0-8 0-12s0-9 0-13s0-9 0-13s0-8 0-13s0-8 0-12s-2-11 0-13ZM56 43c0 4-1 8-1 13s1 8 1 12s0 9 0 13s-1 9-1 13s0 8 0 12s2 9 2 13s-2 8-2 12s1 9 1 13s1 9 1 13s-3 10-1 11s7 0 11 0s9-1 13-1s9 0 13 0s9 0 13 0s9 0 13 1s9 1 12 1s5-3 7-5s2-3 2-7s2-8 2-12s-2-9-2-13s1-8 1-13s1-8 1-13s-1-8 0-12s1-9 1-13s-3-9-3-13s-1-9 0-13s3-9 3-12s-2-7-3-9s-5-2-8-2s-8 0-13 0s-9 0-13 1s-8 0-13 1s-8-1-13-1s-9 1-13 1s-9-4-11-2s0 7 0 11Z" fill="#8E2552" fill-rule="evenodd" opacity="0.42"/><path d="M67 30c2 0 9 0 13 0s9 0 14 0s7 0 11 0s10 0 14 0s9 0 13 0s6 2 8 4s4 5 4 8s0 10 0 12M144 68c0 2 0 8 0 12s0 9 0 14s0 8 0 13s0 8 0 13s0 8 0 12s0 8 0 12s1 11 0 14s-2 6-4 8s-5 3-8 4s-11 0-13 0M106 169c-2 1-8 1-13 1s-9-1-13-1s-9 1-14 1s-10 2-12 0s0-8 0-13s0-9 0-13s0-11 0-13" fill="none" stroke="#6E1E40" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/><path d="M62 39c2-2 8 0 11 0s8 0 11 0s8 0 12 0s8 0 12 0s7 0 10 0s9 0 12 0s3 1 4 2s2 1 2 4s0 8 0 12s0 8 0 13s0 8 0 12s0 7 0 11s0 9 0 13s0 8 0 12s0 9 0 13s0 8 0 12s0 9 0 12s-1 3-2 4s-2 2-4 2s-8 0-12 0s-7 0-10 0s-8 0-12 0s-7 0-11 0s-7 0-11 0s-10 2-12 0s0-8 0-12s0-8 0-13s0-7 0-11s0-9 0-13s0-8 0-12s1-8 0-12s0-8 0-12s0-9 0-13s-1-8 0-12s-2-10 0-12Z" fill="none" stroke="#F4A3BC" stroke-width="1.3" stroke-dasharray="30 4 46 3 70 5" opacity=".55"/><path d="M123 30H132A12 12 0 0 1 144 42V51Z" fill="#F5BF48"/><path d="M133 31.5A10.5 10.5 0 0 1 142.5 41L142.6 48.5L139 45Q138 36 133 31.5Z" fill="#D9981F" opacity=".4"/><path d="M144 149V158A12 12 0 0 1 132 170H123Z" fill="#F5BF48"/><path d="M143.5 151.5V158A11.5 11.5 0 0 1 132 169.5H125.5L137 162Q141 158 143.5 151.5Z" fill="#D9981F" opacity=".45"/><path d="M123.5 30.5L143.5 50.5M143.5 149.5L123.5 169.5" stroke="#D9981F" stroke-width="1.1" opacity=".6"/></g>
+      <g class="page__spine"><path d="M52 30c2-1 4-7 5 0s0 27 0 40s0 27 0 40s0 30 0 40s1 17 0 20s-3 1-5 0s-6-1-8-3s-3-1-4-9s0-25 0-38s0-27 0-40s-1-30 0-38s2-6 4-8s6-3 8-4Z" fill="#B93C6C"/><path d="M49 44c1-1 2-5 2 0s1 21 1 32s0 21-1 32s1 24 1 32s0 13 0 16s-2 1-3 0s-3-1-4-3s-2-1-2-7s0-20 0-30s1-22 0-32s-1-25 0-31s0-4 2-6s3-3 4-3Z" fill="#F08594" opacity=".38"/><path d="M52 30c2-1 4-7 5 0s0 27 0 40s0 27 0 40s0 30 0 40s1 17 0 20s-3 1-5 0s-6-1-8-3s-3-1-4-9s0-25 0-38s0-27 0-40s-1-30 0-38s2-6 4-8s6-3 8-4ZM46 35c-2 2-4 0-4 7s0 25 0 38s0 27 0 40s-1 30 0 38s2 5 4 7s5 3 6 4s3 4 3 1s1-10 1-20s0-27 0-40s0-27 0-40s0-34 0-40s-2 2-3 3s-6 1-7 2Z" fill="#8E2552" fill-rule="evenodd" opacity="0.45"/><path d="M52 170c-1-1-6-2-8-4s-4 0-4-8s0-25 0-38s0-27 0-40s0-32 0-38" fill="none" stroke="#6E1E40" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/><path d="M40.5 47.5h16.5M40.5 152.5h16.5" stroke="#F5BF48" stroke-width="5"/><path d="M40.5 49.6h16.5M40.5 154.6h16.5" stroke="#D9981F" stroke-width="1.2" opacity=".55"/><path d="M56.5 31V169" stroke="#2A2342" stroke-width="1.6" opacity=".14"/></g>
       <g class="page__face">
-        <g fill="#FF8FA3"><ellipse cx="71.5" cy="111" rx="7.4" ry="4.6" opacity=".38"/><ellipse cx="72.3" cy="110.6" rx="4.8" ry="3" opacity=".4"/><ellipse cx="128.5" cy="111" rx="7.4" ry="4.6" opacity=".38"/><ellipse cx="127.7" cy="110.6" rx="4.8" ry="3" opacity=".4"/></g>
-
-        <g class="page__eyes-open">
-          <g class="page__eyes-look">
-            <ellipse cx="85" cy="95" rx="8.3" ry="10" fill="#2A2342"/>
-            <ellipse cx="115" cy="95" rx="8.3" ry="10" fill="#2A2342"/>
-            <circle cx="88" cy="91" r="3.1" fill="#fff"/>
-            <circle cx="118" cy="91" r="3.1" fill="#fff"/>
-            <circle cx="82.6" cy="99" r="1.4" fill="#fff"/>
-            <circle cx="112.6" cy="99" r="1.4" fill="#fff"/>
-          </g>
+        <path d="M74 104c2 0 3 0 4 1s3 1 3 2s0 2-1 3s-2 2-4 2s-3 0-4 0s-4-1-4-2s-1-2-1-3s1-2 2-3s3 0 5 0ZM126 104c2 0 3 0 4 1s3 1 3 2s1 3 0 3s-3 2-4 2s-4 1-6 0s-2-1-3-2s-1-2-1-3s1-2 2-3s3 0 5 0Z" fill="#FF8FA0" opacity=".36"/>
+        <g class="page__eyes-open"><g class="page__eyes-look"><ellipse cx="86" cy="96" rx="3.7" ry="4.5" fill="#2A2342"/><ellipse cx="114" cy="96" rx="3.7" ry="4.5" fill="#2A2342"/><circle cx="87.3" cy="94.3" r="1.25" fill="#FFFDF8"/><circle cx="115.3" cy="94.3" r="1.25" fill="#FFFDF8"/></g></g>
+        <g class="page__lids"><path d="M81.3 95.9C81.3 89 90.7 89 90.7 95.9Q86 99.1 81.3 95.9ZM109.3 95.9C109.3 89 118.7 89 118.7 95.9Q114 99.1 109.3 95.9Z" fill="#D8557F"/><path d="M81 95.8Q86 99.3 91 95.8M109 95.8Q114 99.3 119 95.8" fill="none" stroke="#2A2342" stroke-width="1.8" stroke-linecap="round"/></g>
+        <g class="page__eyes-closed" fill="none" stroke="#2A2342" stroke-width="2.1" stroke-linecap="round">
+          <path class="page__arc-happy" d="M81.5 98Q86 92 90.5 98M109.5 98Q114 92 118.5 98"/>
+          <path class="page__arc-sleep" d="M81.5 96Q86 100 90.5 96M109.5 96Q114 100 118.5 96"/>
         </g>
-
-        <g class="page__lids" fill="#B8325F">
-          <path d="M76.4 95.6 A8.6 10.4 0 0 1 93.6 95.6 Q85 99.6 76.4 95.6 Z"/>
-          <path d="M106.4 95.6 A8.6 10.4 0 0 1 123.6 95.6 Q115 99.6 106.4 95.6 Z"/>
-        </g>
-
-        <g class="page__eyes-closed" fill="none" stroke="#2A2342" stroke-width="3.4" stroke-linecap="round">
-          <path class="page__arc-happy" d="M77 98.5 Q85 88 93 98.5 M107 98.5 Q115 88 123 98.5"/>
-          <path class="page__arc-sleep" d="M77 95 Q85 102.5 93 95 M107 95 Q115 102.5 123 95"/>
-        </g>
-
-        <path class="page__mouth-smile" d="M92 111 Q100 119.5 108 111" fill="none" stroke="#2A2342" stroke-width="3" stroke-linecap="round"/>
-        <g class="page__mouth-open">
-          <path d="M91.5 109.5 Q100 111 108.5 109.5 Q107.5 123 100 123 Q92.5 123 91.5 109.5 Z" fill="#2A2342"/>
-          <path d="M95 119.6 Q100 115.4 105 119.6 Q102.8 122.8 100 122.8 Q97.2 122.8 95 119.6 Z" fill="#FF8FA3"/>
-        </g>
-
-        <g class="page__glasses">
-          <g fill="none" stroke="#2A2342" stroke-width="2.4" stroke-linecap="round">
-            <circle cx="85" cy="95" r="12.8" fill="#fff" fill-opacity=".2"/>
-            <circle cx="115" cy="95" r="12.8" fill="#fff" fill-opacity=".2"/>
-            <path d="M97.8 93.6 Q100 91 102.2 93.6 M72.2 93 L64 89.5 M127.8 93 L136 89.5"/>
-          </g>
-          <path d="M77.6 89.5 Q79.8 86.3 83.4 85.8 M107.6 89.5 Q109.8 86.3 113.4 85.8" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" opacity=".8"/>
-        </g>
+        <path class="page__brow-l" d="M80.8 88.2Q85.6 85.4 91 87.4" fill="none" stroke="#6E1E40" stroke-width="2.1" stroke-linecap="round" opacity=".85"/>
+        <path class="page__brow-r" d="M109 87.4Q114.4 85.4 119.2 88.2" fill="none" stroke="#6E1E40" stroke-width="2.1" stroke-linecap="round" opacity=".85"/>
+        <path class="page__mouth-smile" d="M93.5 106.5Q100 112.5 106.5 106.5" fill="none" stroke="#2A2342" stroke-width="2.1" stroke-linecap="round"/>
+        <g class="page__mouth-open"><path d="M95 106Q100 105 105 106Q105.4 114 100 114Q94.6 114 95 106Z" fill="#2A2342"/><path d="M96.8 112.3Q100 109.7 103.2 112.3Q101.7 113.8 100 113.8Q98.3 113.8 96.8 112.3Z" fill="#F58A9B"/></g>
+        <g class="page__glasses"><g fill="none" stroke="#2A2342" stroke-width="1.8" stroke-linecap="round"><circle cx="86" cy="96" r="9" fill="#FFFFFF" fill-opacity=".22"/><circle cx="114" cy="96" r="9" fill="#FFFFFF" fill-opacity=".22"/><path d="M95 94.6Q100 91.6 105 94.6M77 94.4L69 91M123 94.4L131 91"/></g><path d="M80.4 92.2Q82 89.6 84.8 89" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".85"/><path d="M108.4 92.2Q110 89.6 112.8 89" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".85"/></g>
       </g>
     </g>
-
-    <!-- Sleeping Z's -->
-    <g class="page__zzz" fill="none" stroke="#2A2342" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-      <g transform="translate(142 30)"><path class="page__z page__z--1" d="M0 0 H8 L0 9 H8"/></g>
-      <g transform="translate(155 15)"><path class="page__z page__z--2" d="M0 0 H10 L0 11 H10"/></g>
-      <g transform="translate(170 0)"><path class="page__z page__z--3" d="M0 0 H12 L0 13 H12"/></g>
+    <g class="page__zzz" fill="none" stroke="#7C74B8" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".85">
+      <g transform="translate(142 30)"><path class="page__z page__z--1" d="M0 0H8L.5 8.5H8.5"/></g>
+      <g transform="translate(155 15)"><path class="page__z page__z--2" d="M0 0H10L.5 10.5H10.5"/></g>
+      <g transform="translate(170 0)"><path class="page__z page__z--3" d="M0 0H12L.5 12.5H12.5"/></g>
     </g>
-
-    <!-- Loose pages that fly out on celebrations -->
-    <g class="page__flutter">
-      <g transform="translate(94 34)"><g class="page__leaf page__leaf--1"><rect x="-6" y="-7.5" width="12" height="15" rx="1.5" fill="#FFF6E3"/><path d="M-3 -3 H3 M-3 0.5 H3 M-3 4 H1" stroke="#EADBC0" stroke-width="1.3" stroke-linecap="round"/></g></g>
-      <g transform="translate(106 34)"><g class="page__leaf page__leaf--2"><rect x="-6" y="-7.5" width="12" height="15" rx="1.5" fill="#FFF6E3"/><path d="M-3 -3 H3 M-3 0.5 H3 M-3 4 H1" stroke="#EADBC0" stroke-width="1.3" stroke-linecap="round"/></g></g>
-      <g transform="translate(100 36)"><g class="page__leaf page__leaf--3"><rect x="-5" y="-6.5" width="10" height="13" rx="1.5" fill="#FFF6E3"/><path d="M-2.5 -2.5 H2.5 M-2.5 1 H2.5" stroke="#EADBC0" stroke-width="1.2" stroke-linecap="round"/></g></g>
-    </g>
-
-    <!-- Celebration sparkles -->
-    <g class="page__sparkles">
-      <g transform="translate(28 54)"><path class="page__spark page__spark--1" d="M0 -8 Q1.4 -1.4 8 0 Q1.4 1.4 0 8 Q-1.4 1.4 -8 0 Q-1.4 -1.4 0 -8 Z" fill="#FFC93C"/></g>
-      <g transform="translate(174 50)"><path class="page__spark page__spark--2" d="M0 -7 Q1.2 -1.2 7 0 Q1.2 1.2 0 7 Q-1.2 1.2 -7 0 Q-1.2 -1.2 0 -7 Z" fill="#2FB5A5"/></g>
-      <g transform="translate(16 104)"><path class="page__spark page__spark--3" d="M0 -6 Q1 -1 6 0 Q1 1 0 6 Q-1 1 -6 0 Q-1 -1 0 -6 Z" fill="#2FB5A5"/></g>
-      <g transform="translate(186 100)"><path class="page__spark page__spark--4" d="M0 -8 Q1.4 -1.4 8 0 Q1.4 1.4 0 8 Q-1.4 1.4 -8 0 Q-1.4 -1.4 0 -8 Z" fill="#FFC93C"/></g>
-      <g transform="translate(66 14)"><path class="page__spark page__spark--5" d="M0 -6 Q1 -1 6 0 Q1 1 0 6 Q-1 1 -6 0 Q-1 -1 0 -6 Z" fill="#FFC93C"/></g>
-      <g transform="translate(150 160)"><path class="page__spark page__spark--6" d="M0 -5 Q0.9 -0.9 5 0 Q0.9 0.9 0 5 Q-0.9 0.9 -5 0 Q-0.9 -0.9 0 -5 Z" fill="#FFC93C"/></g>
-    </g>
-
-    <!-- Break buddy -->
+    <g class="page__flutter"><g transform="translate(94 34)"><g class="page__leaf page__leaf--1"><path d="M-5-8c1 0 4 1 5 1s4-1 5 0s0 0 1 0s0 0 0 1s0 4 0 6s0 5 0 6s0 1 0 1s-1 0-2 0s-3 1-4 1s-4 0-4 0s-1-1-2-1s0 0 0-1s0-4 0-6s0-5 0-6s0-1 0-1s0-1 1-1Z" fill="#FFF3DD" stroke="#D9C29C" stroke-width=".9"/><path d="M-3 -3H3M-3 .5H3M-3 4H1" stroke="#E2CFAE" stroke-width="1.2" stroke-linecap="round"/></g></g><g transform="translate(106 34)"><g class="page__leaf page__leaf--2"><path d="M-5-7c1 0 3 0 5 0s4-1 5 0s0 0 1 0s0 0 0 1s0 4 0 6s0 5 0 6s0 1 0 1s-1 0-2 0s-2 1-4 1s-4 0-4 0s-1-1-2-1s0 0 0-1s0-4 0-6s0-5 0-6s0-1 0-1s0 0 1 0Z" fill="#FFF3DD" stroke="#D9C29C" stroke-width=".9"/><path d="M-3 -3H3M-3 .5H3M-3 4H1" stroke="#E2CFAE" stroke-width="1.2" stroke-linecap="round"/></g></g><g transform="translate(100 36)"><g class="page__leaf page__leaf--3"><path d="M-4-7c2 0 6 0 8 1s0 0 1 0s0 0 0 1s0 3 0 5s0 4 0 5s0 1 0 1s0 0-2 1s-5 0-6 0s-1-1-2-1s0 0 0-1s0-3 0-5s0-4 0-5s0-1 0-1s0-1 1-1Z" fill="#FFF3DD" stroke="#D9C29C" stroke-width=".9"/><path d="M-3 -3H3M-3 .5H3M-3 4H1" stroke="#E2CFAE" stroke-width="1.2" stroke-linecap="round"/></g></g></g>
+    <g class="page__sparkles"><g transform="translate(28 54)"><g class="page__spark page__spark--1"><path d="M0 -8Q1 -1 8 0Q1 1 0 8Q-1 1 -8 0Q-1 -1 0 -8Z" fill="#F5BF48" opacity=".9"/><circle r="2" fill="#FFFDF5" opacity=".8"/></g></g><g transform="translate(174 50)"><g class="page__spark page__spark--2"><path d="M0 -7Q1 -1 7 0Q1 1 0 7Q-1 1 -7 0Q-1 -1 0 -7Z" fill="#3DB4A4" opacity=".9"/><circle r="2" fill="#FFFDF5" opacity=".8"/></g></g><g transform="translate(16 104)"><g class="page__spark page__spark--3"><path d="M0 -6Q1 -1 6 0Q1 1 0 6Q-1 1 -6 0Q-1 -1 0 -6Z" fill="#3DB4A4" opacity=".9"/><circle r="1" fill="#FFFDF5" opacity=".8"/></g></g><g transform="translate(186 100)"><g class="page__spark page__spark--4"><path d="M0 -8Q1 -1 8 0Q1 1 0 8Q-1 1 -8 0Q-1 -1 0 -8Z" fill="#F5BF48" opacity=".9"/><circle r="2" fill="#FFFDF5" opacity=".8"/></g></g><g transform="translate(66 14)"><g class="page__spark page__spark--5"><path d="M0 -6Q1 -1 6 0Q1 1 0 6Q-1 1 -6 0Q-1 -1 0 -6Z" fill="#F5BF48" opacity=".9"/><circle r="1" fill="#FFFDF5" opacity=".8"/></g></g><g transform="translate(150 160)"><g class="page__spark page__spark--6"><path d="M0 -5Q1 -1 5 0Q1 1 0 5Q-1 1 -5 0Q-1 -1 0 -5Z" fill="#F98FA0" opacity=".9"/><circle r="1" fill="#FFFDF5" opacity=".8"/></g></g></g>
     <g class="page__butterfly">
       <g transform="translate(166 54) scale(1.4)">
         <g class="page__bfly">
-          <g class="page__bfly-wings">
-            <ellipse cx="-4.6" cy="-2.4" rx="5" ry="4.2" fill="#2FB5A5"/>
-            <ellipse cx="4.6" cy="-2.4" rx="5" ry="4.2" fill="#2FB5A5"/>
-            <ellipse cx="-3.6" cy="3" rx="3.4" ry="3" fill="#FFC93C"/>
-            <ellipse cx="3.6" cy="3" rx="3.4" ry="3" fill="#FFC93C"/>
-          </g>
-          <rect x="-1.1" y="-5" width="2.2" height="10" rx="1.1" fill="#2A2342"/>
-          <path d="M-0.5 -5 Q-2 -8.5 -3.6 -9 M0.5 -5 Q2 -8.5 3.6 -9" fill="none" stroke="#2A2342" stroke-width="0.9" stroke-linecap="round"/>
+          <g class="page__bfly-wings"><path d="M-5-7c2 0 3 1 4 2s2 2 2 3s-1 2-2 3s-2 1-4 0s-2 0-3-1s-2-1-2-2s1-3 2-3s2-2 3-2ZM5-7c1 0 2 1 3 2s1 2 1 3s0 2-1 3s-2 1-3 0s-3 0-4-1s-2-1-2-2s1-3 2-4s2-1 4-1Z" fill="#3DB4A4" opacity=".9"/><path d="M-4 0c1 0 2 1 3 1s1 2 1 3s-1 1-2 2s-2 0-3 0s-2-2-2-2s0-2 1-3s2-1 2-1ZM4 0c1 0 2 1 2 1s1 2 1 3s-1 1-2 2s-2 0-3 0s-2-1-2-2s0-2 1-3s2-1 3-1Z" fill="#F5BF48" opacity=".9"/></g>
+          <rect x="-1" y="-5" width="2" height="10" rx="1" fill="#2A2342"/>
+          <path d="M-.5 -5Q-2 -8.5 -3.6 -9M.5 -5Q2 -8.5 3.6 -9" fill="none" stroke="#2A2342" stroke-width=".9" stroke-linecap="round"/>
         </g>
       </g>
     </g>
