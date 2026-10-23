@@ -4,30 +4,34 @@
    ember--idle | --focus | --focus-tired | --focus-sleeping |
    ember--break-start (≈750 ms one-shot) | --break-active | --break-done (≈1.6 s)
    Pivots use view-box coordinates (the SVG's 200×200 user space).
+   Ember is small-eyed, so expressions live mostly in the brows and posture.
    ═════════════════════════════════════════════════════════════════════════════ */
 
 .ember { overflow: visible; display: block; }
 
 .ember__root     { transform-box: view-box; transform-origin: 100px 180px; }
-.ember__shadow   { transform-box: view-box; transform-origin: 100px 181px; }
-.ember__head     { transform-box: view-box; transform-origin: 100px 120px; }
-.ember__gaze     { transform-box: view-box; transform-origin: 100px 84px; }
-.ember__eyes-open{ transform-box: view-box; transform-origin: 100px 84px; }
-.ember__tail     { transform-box: view-box; transform-origin: 122px 156px; }
-.ember__wing-l   { transform-box: view-box; transform-origin: 82px 141px; }
-.ember__wing-r   { transform-box: view-box; transform-origin: 118px 141px; }
-.ember__arm-l    { transform-box: view-box; transform-origin: 73px 128px; }
-.ember__arm-r    { transform-box: view-box; transform-origin: 127px 128px; }
+.ember__shadow   { transform-box: view-box; transform-origin: 100px 182px; }
+.ember__head     { transform-box: view-box; transform-origin: 100px 116px; }
+.ember__gaze     { transform-box: view-box; transform-origin: 100px 80.5px; }
+.ember__eyes-open{ transform-box: view-box; transform-origin: 100px 80.5px; }
+.ember__tail     { transform-box: view-box; transform-origin: 125px 160px; }
+.ember__wing-l   { transform-box: view-box; transform-origin: 82px 127px; }
+.ember__wing-r   { transform-box: view-box; transform-origin: 118px 127px; }
+.ember__arm-l    { transform-box: view-box; transform-origin: 73px 127px; }
+.ember__arm-r    { transform-box: view-box; transform-origin: 127px 127px; }
 .ember__book     { transform-box: view-box; transform-origin: 100px 152px; }
-.ember__puff     { transform-box: view-box; transform-origin: 127px 107px; }
+.ember__puff     { transform-box: view-box; transform-origin: 138px 93px; }
 .ember__butterfly{ transform-box: view-box; transform-origin: 156px 56px; }
 .ember__spark,
 .ember__z,
-.ember__bfly     { transform-box: fill-box; transform-origin: 50% 50%; }
+.ember__bfly,
+.ember__brow-l,
+.ember__brow-r   { transform-box: fill-box; transform-origin: 50% 50%; }
 
 /* Static pose changes ease between states */
 .ember__arm-l, .ember__arm-r, .ember__book, .ember__gaze,
-.ember__head, .ember__wing-l, .ember__wing-r {
+.ember__head, .ember__wing-l, .ember__wing-r,
+.ember__brow-l, .ember__brow-r {
   transition: transform 450ms cubic-bezier(.34, 1.36, .64, 1);
 }
 
@@ -45,15 +49,19 @@
 .ember--idle .ember__eyes-open { animation: ember-blink 5s infinite; }
 .ember--idle .ember__tail      { animation: ember-sway 4.2s ease-in-out infinite; }
 .ember--idle .ember__arm-r     { animation: ember-wave 9s ease-in-out 1.5s infinite; }
+.ember--idle .ember__brow-l,
+.ember--idle .ember__brow-r    { animation: ember-brow-lift 9s ease-in-out 1.5s infinite; }
 
 /* ── focus: reading, eyes on the book ─────────────────────────────────────── */
 .ember--focus .ember__book,
 .ember--focus-tired .ember__book,
 .ember--focus-sleeping .ember__book { opacity: 1; }
 
-.ember--focus .ember__arm-l { transform: rotate(-27deg); }
-.ember--focus .ember__arm-r { transform: rotate(27deg); }
-.ember--focus .ember__gaze  { transform: translateY(3.5px); }
+.ember--focus .ember__arm-l { transform: rotate(-36deg); }
+.ember--focus .ember__arm-r { transform: rotate(36deg); }
+.ember--focus .ember__gaze  { transform: translateY(2.5px); }
+.ember--focus .ember__brow-l { transform: translateY(1px) rotate(9deg); }
+.ember--focus .ember__brow-r { transform: translateY(1px) rotate(-9deg); }
 .ember--focus .ember__eyes-open { animation: ember-blink 8s 2s infinite; }
 .ember--focus .ember__root  { animation: ember-bob 4s ease-in-out infinite; }
 .ember--focus .ember__head  { animation: ember-nod 8s ease-in-out infinite; }
@@ -63,8 +71,10 @@
 .ember--focus-tired .ember__lids  { opacity: 1; }
 .ember--focus-tired .ember__gaze  { transform: translateY(3px); }
 .ember--focus-tired .ember__book  { transform: translateY(5px) rotate(5deg); }
-.ember--focus-tired .ember__arm-l { transform: rotate(-19deg); }
-.ember--focus-tired .ember__arm-r { transform: rotate(23deg); }
+.ember--focus-tired .ember__arm-l { transform: rotate(-27deg); }
+.ember--focus-tired .ember__arm-r { transform: rotate(31deg); }
+.ember--focus-tired .ember__brow-l { transform: translateY(1.5px) rotate(-17deg); }
+.ember--focus-tired .ember__brow-r { transform: translateY(1.5px) rotate(17deg); }
 .ember--focus-tired .ember__root  { animation: ember-drowsy 5s ease-in-out infinite; }
 .ember--focus-tired .ember__mouth-open  { animation: ember-yawn 7s ease-in-out 1s infinite; }
 .ember--focus-tired .ember__mouth-smile { animation: ember-yawn-hide 7s ease-in-out 1s infinite; }
@@ -78,8 +88,10 @@
 .ember--focus-sleeping .ember__zzz         { opacity: 1; }
 .ember--focus-sleeping .ember__head  { transform: rotate(-7deg); }
 .ember--focus-sleeping .ember__book  { transform: translateY(9px) rotate(9deg); }
-.ember--focus-sleeping .ember__arm-l { transform: rotate(-12deg); }
-.ember--focus-sleeping .ember__arm-r { transform: rotate(16deg); }
+.ember--focus-sleeping .ember__arm-l { transform: rotate(-19deg); }
+.ember--focus-sleeping .ember__arm-r { transform: rotate(24deg); }
+.ember--focus-sleeping .ember__brow-l { transform: translateY(2.5px) rotate(-6deg); }
+.ember--focus-sleeping .ember__brow-r { transform: translateY(2.5px) rotate(6deg); }
 .ember--focus-sleeping .ember__wing-l { transform: rotate(10deg) scale(.88); }
 .ember--focus-sleeping .ember__wing-r { transform: rotate(-10deg) scale(.88); }
 .ember--focus-sleeping .ember__root  { animation: ember-breathe 5s ease-in-out infinite; }
@@ -95,6 +107,8 @@
 .ember--break-start .ember__arm-l  { transform: rotate(124deg); transition-duration: 250ms; }
 .ember--break-start .ember__arm-r  { transform: rotate(-124deg); transition-duration: 250ms; }
 .ember--break-start .ember__mouth-open  { opacity: 1; }
+.ember--break-start .ember__brow-l,
+.ember--break-start .ember__brow-r { transform: translateY(-3.5px); transition-duration: 200ms; }
 .ember--break-start .ember__mouth-smile { opacity: 0; }
 .ember--break-start .ember__sparkles    { opacity: 1; transition: none; }
 .ember--break-start .ember__spark       { animation: ember-sparkle 650ms ease-out both; }
@@ -106,9 +120,11 @@
 .ember--break-active .ember__eyes-closed,
 .ember--break-active .ember__eyes-happy,
 .ember--break-active .ember__butterfly  { opacity: 1; }
+.ember--break-active .ember__brow-l { transform: translateY(-2px) rotate(-4deg); }
+.ember--break-active .ember__brow-r { transform: translateY(-2px) rotate(4deg); }
 .ember--break-active .ember__root  { animation: ember-stretch-lean 3.4s ease-in-out infinite; }
-.ember--break-active .ember__arm-l { transform: rotate(118deg); animation: ember-reach-l 3.4s ease-in-out infinite; }
-.ember--break-active .ember__arm-r { transform: rotate(-118deg); animation: ember-reach-r 3.4s ease-in-out infinite; }
+.ember--break-active .ember__arm-l { transform: rotate(140deg); animation: ember-reach-l 3.4s ease-in-out infinite; }
+.ember--break-active .ember__arm-r { transform: rotate(-140deg); animation: ember-reach-r 3.4s ease-in-out infinite; }
 .ember--break-active .ember__wing-l { animation: ember-flutter-l 1.2s ease-in-out infinite alternate; }
 .ember--break-active .ember__wing-r { animation: ember-flutter-r 1.2s ease-in-out infinite alternate; }
 .ember--break-active .ember__tail  { animation: ember-wag 1.4s ease-in-out infinite; }
@@ -123,6 +139,8 @@
 .ember--break-done .ember__spark  { animation: ember-sparkle 900ms ease-out 200ms both; }
 .ember--break-done .ember__spark:nth-child(2n) { animation-delay: 450ms; }
 .ember--break-done .ember__spark:nth-child(3n) { animation-delay: 700ms; }
+.ember--break-done .ember__brow-l,
+.ember--break-done .ember__brow-r { transform: translateY(-2.5px); }
 .ember--break-done .ember__puff   { opacity: .8; animation: ember-puff 1.4s ease-out 150ms both; }
 
 /* ── Keyframes ─────────────────────────────────────────────────────────────── */
@@ -146,6 +164,10 @@
   87%      { transform: rotate(-122deg); }
   91%      { transform: rotate(-100deg); }
   96%      { transform: rotate(0); }
+}
+@keyframes ember-brow-lift {
+  0%, 74%, 96%, 100% { transform: translateY(0); }
+  79%, 91%           { transform: translateY(-2px); }
 }
 @keyframes ember-bob {
   0%, 100% { transform: translateY(0); }
@@ -201,12 +223,12 @@
   75%      { transform: rotate(0) translateY(-3px); }
 }
 @keyframes ember-reach-l {
-  0%, 100% { transform: rotate(128deg); }
-  50%      { transform: rotate(106deg); }
+  0%, 100% { transform: rotate(150deg); }
+  50%      { transform: rotate(128deg); }
 }
 @keyframes ember-reach-r {
-  0%, 100% { transform: rotate(-106deg); }
-  50%      { transform: rotate(-128deg); }
+  0%, 100% { transform: rotate(-128deg); }
+  50%      { transform: rotate(-150deg); }
 }
 @keyframes ember-flutter-l {
   from { transform: rotate(-6deg); }
