@@ -1,0 +1,231 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   Otho Sackville-Baggins — hidden buddy. One state class on the root svg:
+   otho--idle | focus | focus-tired | focus-sleeping | break-start |
+   break-active | break-done. Pivots are viewBox coordinates.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.otho { overflow: visible; }
+.otho * { transform-box: view-box; }
+
+.otho__inner { transform-origin: 100px 178px; }
+.otho__head  { transform-origin: 100px 116px; transition: transform 450ms ease; }
+.otho__arm-l { transform-origin: 74px 124px; transition: transform 450ms cubic-bezier(.34, 1.56, .64, 1); }
+.otho__arm-r { transform-origin: 126px 124px; transition: transform 450ms cubic-bezier(.34, 1.56, .64, 1); }
+.otho__pupils { transition: transform 300ms ease; }
+.otho__brow-l, .otho__brow-r { transition: transform 300ms ease; }
+.otho__lid--l { transform-origin: 86px 65.6px; transform: scaleY(0.001); }
+.otho__lid--r { transform-origin: 114px 65.6px; transform: scaleY(0.001); }
+.otho__shadow { transform-box: fill-box; transform-origin: center; }
+.otho__twinkle { transform-box: fill-box; transform-origin: center; }
+.otho__mouth-open { transform-box: fill-box; transform-origin: center; }
+
+/* Hidden by default */
+.otho__arms-out, .otho__eyes-closed, .otho__arc-sleep, .otho__arc-smug,
+.otho__mouth-open, .otho__mouth-smug, .otho__zzz, .otho__fly, .otho__halo,
+.otho__twinkle, .otho__hmph { opacity: 0; }
+.otho__arms-out, .otho__arms-crossed, .otho__eyes-open, .otho__eyes-closed,
+.otho__mouth-frown, .otho__mouth-open, .otho__mouth-smug, .otho__zzz, .otho__halo {
+  transition: opacity 250ms ease;
+}
+
+/* ── Shared keyframes ─────────────────────────────────────────────────────── */
+
+@keyframes otho-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.01, 1.018); } }
+@keyframes otho-shifty {
+  0%, 18%  { transform: translateX(-2.6px); }
+  26%, 46% { transform: translateX(2.6px); }
+  54%, 70% { transform: translateX(-2.6px); }
+  76%, 100% { transform: translateX(0); }
+}
+@keyframes otho-blink-squint { 0%, 92%, 100% { transform: scaleY(.55); } 95% { transform: scaleY(1.8); } }
+@keyframes otho-blink-peer   { 0%, 94%, 100% { transform: scaleY(.4); }  97% { transform: scaleY(1.8); } }
+@keyframes otho-blink-heavy  { 0%, 80%, 100% { transform: scaleY(1); }   88% { transform: scaleY(1.8); } }
+@keyframes otho-harrumph {
+  0%, 78%, 100% { transform: none; }
+  81% { transform: translateY(-3px) rotate(3deg); }
+  86% { transform: translateY(0) rotate(-1deg); }
+  90% { transform: none; }
+}
+@keyframes otho-hmph-pop {
+  0%, 78%  { opacity: 0; transform: translateY(4px) scale(.7); }
+  82%, 92% { opacity: 1; transform: none; }
+  97%, 100% { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes otho-twinkle {
+  0%, 60%, 100% { opacity: 0; transform: scale(.2) rotate(0deg); }
+  72%           { opacity: 1; transform: scale(1.1) rotate(45deg); }
+  84%           { opacity: 0; transform: scale(.3) rotate(90deg); }
+}
+
+/* ── idle: arms crossed, shifty eyes, the odd harrumph ────────────────────── */
+
+.otho--idle .otho__inner  { animation: otho-breathe 3.6s ease-in-out infinite; }
+.otho--idle .otho__pupils { animation: otho-shifty 6s ease-in-out infinite; }
+.otho--idle .otho__lid--l,
+.otho--idle .otho__lid--r { animation: otho-blink-squint 5.5s ease-in-out infinite; }
+.otho--idle .otho__head   { animation: otho-harrumph 8s ease-in-out infinite; }
+.otho--idle .otho__hmph   { animation: otho-hmph-pop 8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+
+/* ── focus: admiring his spoon ────────────────────────────────────────────── */
+
+.otho--focus .otho__arms-out,
+.otho--focus-tired .otho__arms-out,
+.otho--focus-sleeping .otho__arms-out,
+.otho--break-start .otho__arms-out,
+.otho--break-active .otho__arms-out { opacity: 1; }
+.otho--focus .otho__arms-crossed,
+.otho--focus-tired .otho__arms-crossed,
+.otho--focus-sleeping .otho__arms-crossed,
+.otho--break-start .otho__arms-crossed,
+.otho--break-active .otho__arms-crossed { opacity: 0; }
+.otho--break-start .otho__arms-crossed { transition-duration: 60ms; }
+
+@keyframes otho-polish { 0%, 100% { transform: rotate(-125deg); } 50% { transform: rotate(-117deg); } }
+@keyframes otho-peer   { 0%, 100% { transform: translate(3px, -1.4px); } 50% { transform: translate(2.2px, -2px); } }
+
+.otho--focus .otho__arm-r   { transform: rotate(-125deg); animation: otho-polish 2.6s ease-in-out infinite; }
+.otho--focus .otho__arm-l   { transform: rotate(-8deg); }
+.otho--focus .otho__pupils  { transform: translate(3px, -1.4px); animation: otho-peer 2.6s ease-in-out infinite; }
+.otho--focus .otho__lid--l,
+.otho--focus .otho__lid--r  { animation: otho-blink-peer 8s ease-in-out infinite; }
+.otho--focus .otho__head    { transform: rotate(4deg); }
+.otho--focus .otho__inner   { animation: otho-breathe 3.2s ease-in-out infinite; }
+.otho--focus .otho__twinkle { animation: otho-twinkle 3.4s ease-in-out infinite; }
+
+/* ── focus-tired: drooping, grumbling ─────────────────────────────────────── */
+
+@keyframes otho-sag { 0%, 100% { transform: rotate(-62deg); } 50% { transform: rotate(-50deg); } }
+@keyframes otho-sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+@keyframes otho-yawn-open { 0%, 62%, 86%, 100% { opacity: 0; transform: scale(.6); } 68%, 80% { opacity: 1; transform: scale(1.25); } }
+@keyframes otho-yawn-shut { 0%, 62%, 86%, 100% { opacity: 1; } 66%, 82% { opacity: 0; } }
+
+.otho--focus-tired .otho__arm-r  { animation: otho-sag 4.4s ease-in-out infinite; }
+.otho--focus-tired .otho__arm-l  { transform: rotate(-4deg); }
+.otho--focus-tired .otho__head   { animation: otho-sway 4.4s ease-in-out infinite; }
+.otho--focus-tired .otho__pupils { transform: translate(1px, 1.6px); }
+.otho--focus-tired .otho__lid--l,
+.otho--focus-tired .otho__lid--r { transform: scaleY(1); animation: otho-blink-heavy 4.4s ease-in-out infinite; }
+.otho--focus-tired .otho__brow-l { transform: translateY(2px); }
+.otho--focus-tired .otho__brow-r { transform: translateY(2px); }
+.otho--focus-tired .otho__mouth-open  { animation: otho-yawn-open 6s ease-in-out infinite; }
+.otho--focus-tired .otho__mouth-frown { animation: otho-yawn-shut 6s ease-in-out infinite; }
+
+/* ── focus-sleeping: snoring, still clutching the spoon ───────────────────── */
+
+@keyframes otho-snore { 0%, 100% { transform: scale(.55); } 50% { transform: scale(.95); } }
+@keyframes otho-sleep-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.015, 1.03); } }
+@keyframes otho-z {
+  0%   { opacity: 0; transform: translate(-6px, 10px) scale(.6); }
+  25%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(6px, -12px) scale(1.15); }
+}
+
+.otho--focus-sleeping .otho__arm-r  { transform: rotate(-38deg); }
+.otho--focus-sleeping .otho__arm-l  { transform: rotate(-2deg); }
+.otho--focus-sleeping .otho__head   { transform: rotate(-8deg) translateY(2px); }
+.otho--focus-sleeping .otho__inner  { animation: otho-sleep-breathe 3.4s ease-in-out infinite; }
+.otho--focus-sleeping .otho__eyes-open  { opacity: 0; }
+.otho--focus-sleeping .otho__eyes-closed,
+.otho--focus-sleeping .otho__arc-sleep  { opacity: 1; }
+.otho--focus-sleeping .otho__brow-l,
+.otho--focus-sleeping .otho__brow-r { transform: translateY(2.5px); }
+.otho--focus-sleeping .otho__mouth-frown { opacity: 0; }
+.otho--focus-sleeping .otho__mouth-open  { opacity: 1; animation: otho-snore 3.4s ease-in-out infinite; }
+.otho--focus-sleeping .otho__zzz { opacity: 1; }
+.otho--focus-sleeping .otho__z   { opacity: 0; transform-box: fill-box; transform-origin: center; animation: otho-z 2.7s ease-out infinite; }
+.otho--focus-sleeping .otho__z--2 { animation-delay: .9s; }
+.otho--focus-sleeping .otho__z--3 { animation-delay: 1.8s; }
+
+/* ── break-start: startled hop, spoons everywhere ─────────────────────────── */
+
+@keyframes otho-hop {
+  0%   { transform: none; }
+  18%  { transform: scale(1.06, .9); }
+  48%  { transform: translateY(-18px) scale(.96, 1.06); }
+  78%  { transform: translateY(0) scale(1.05, .94); }
+  100% { transform: none; }
+}
+@keyframes otho-hop-shadow { 0%, 100% { transform: scale(1); } 48% { transform: scale(.7); opacity: .6; } }
+@keyframes otho-fly-1 { 0% { opacity: 0; transform: none; } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(-64px, -96px) rotate(-280deg); } }
+@keyframes otho-fly-2 { 0% { opacity: 0; transform: none; } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(70px, -88px) rotate(300deg); } }
+@keyframes otho-fly-3 { 0% { opacity: 0; transform: none; } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(6px, -122px) rotate(200deg); } }
+
+.otho--break-start .otho__inner  { animation: otho-hop 750ms ease-out both; }
+.otho--break-start .otho__shadow { animation: otho-hop-shadow 750ms ease-out both; }
+.otho--break-start .otho__arm-l  { transform: rotate(150deg); transition-duration: 220ms; }
+.otho--break-start .otho__arm-r  { transform: rotate(-150deg); transition-duration: 220ms; }
+.otho--break-start .otho__brow-l,
+.otho--break-start .otho__brow-r { transform: translateY(-5px); }
+.otho--break-start .otho__mouth-frown { opacity: 0; }
+.otho--break-start .otho__mouth-open  { opacity: 1; transform: scale(1.3); }
+.otho--break-start .otho__fly { transform-origin: 100px 128px; }
+.otho--break-start .otho__fly--1 { animation: otho-fly-1 750ms ease-out both; }
+.otho--break-start .otho__fly--2 { animation: otho-fly-2 750ms ease-out both; }
+.otho--break-start .otho__fly--3 { animation: otho-fly-3 750ms ease-out both; }
+
+/* ── break-active: smug march, waving his spoon ───────────────────────────── */
+
+@keyframes otho-march {
+  0%, 100% { transform: translateX(-4px) translateY(0) rotate(-2deg); }
+  25%      { transform: translateX(0) translateY(-4px) rotate(0deg); }
+  50%      { transform: translateX(4px) translateY(0) rotate(2deg); }
+  75%      { transform: translateX(0) translateY(-4px) rotate(0deg); }
+}
+@keyframes otho-wave  { 0%, 100% { transform: rotate(-132deg); } 50% { transform: rotate(-108deg); } }
+@keyframes otho-swing { 0%, 100% { transform: rotate(16deg); } 50% { transform: rotate(-12deg); } }
+@keyframes otho-spin  { to { transform: rotate(360deg); } }
+
+.otho--break-active .otho__inner  { animation: otho-march 1.8s ease-in-out infinite; }
+.otho--break-active .otho__arm-r  { animation: otho-wave .9s ease-in-out infinite; }
+.otho--break-active .otho__arm-l  { animation: otho-swing .9s ease-in-out infinite; }
+.otho--break-active .otho__mouth-frown { opacity: 0; }
+.otho--break-active .otho__mouth-smug  { opacity: 1; }
+.otho--break-active .otho__brow-r { transform: translateY(-3.5px) rotate(-4deg); transform-origin: 114px 64px; }
+.otho--break-active .otho__lid--l,
+.otho--break-active .otho__lid--r { animation: otho-blink-peer 6s ease-in-out infinite; }
+.otho--break-active .otho__twinkle { animation: otho-twinkle 2.2s ease-in-out infinite; }
+.otho--break-active .otho__halo { opacity: 1; transform: scale(1, .5); transform-origin: 100px 14px; }
+.otho--break-active .otho__halo-spin { transform-origin: 100px 14px; animation: otho-spin 2.4s linear infinite; }
+
+/* ── break-done: smug harrumph and a satisfied nod ────────────────────────── */
+
+@keyframes otho-nod {
+  0%, 100% { transform: none; }
+  22% { transform: rotate(5deg) translateY(2px); }
+  40% { transform: rotate(-2deg) translateY(-1px); }
+  58% { transform: rotate(5deg) translateY(2px); }
+  76% { transform: none; }
+}
+@keyframes otho-hmph-once {
+  0%, 15%  { opacity: 0; transform: translateY(4px) scale(.7); }
+  25%, 80% { opacity: 1; transform: none; }
+  100%     { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes otho-settle { 0% { transform: translateY(-6px); } 40% { transform: translateY(1px) scale(1.03, .97); } 100% { transform: none; } }
+
+.otho--break-done .otho__head  { animation: otho-nod 1.6s ease-in-out both; }
+.otho--break-done .otho__inner { animation: otho-settle .6s ease-out both; }
+.otho--break-done .otho__eyes-open   { opacity: 0; }
+.otho--break-done .otho__eyes-closed,
+.otho--break-done .otho__arc-smug    { opacity: 1; }
+.otho--break-done .otho__mouth-frown { opacity: 0; }
+.otho--break-done .otho__mouth-smug  { opacity: 1; }
+.otho--break-done .otho__brow-r { transform: translateY(-3px); }
+.otho--break-done .otho__hmph   { animation: otho-hmph-once 1.6s ease-in-out both; transform-box: fill-box; transform-origin: center; }
+
+/* ── Reduced motion: hold each expression, no loops ───────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .otho *, .otho__inner, .otho__head { animation: none !important; transition: none !important; }
+  .otho--idle .otho__lid--l, .otho--idle .otho__lid--r { transform: scaleY(.55); }
+  .otho--focus .otho__lid--l, .otho--focus .otho__lid--r,
+  .otho--break-active .otho__lid--l, .otho--break-active .otho__lid--r { transform: scaleY(.4); }
+  .otho--focus-tired .otho__arm-r { transform: rotate(-56deg); }
+  .otho--focus-tired .otho__head { transform: rotate(-2deg); }
+  .otho--focus-sleeping .otho__z { opacity: 1; }
+  .otho--focus-sleeping .otho__mouth-open { transform: scale(.75); }
+  .otho--break-active .otho__arm-r { transform: rotate(-120deg); }
+  .otho--break-active .otho__arm-l { transform: rotate(10deg); }
+  .otho--break-active .otho__twinkle { opacity: 1; }
+  .otho--break-done .otho__hmph { opacity: 1; }
+}

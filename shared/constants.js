@@ -34,14 +34,43 @@ export const MSG = {
 };
 
 // ── Characters ───────────────────────────────────────────────────────────────
-// `reward` is what a full (uninterrupted) break earns for the kid.
+// `reward` is what a full (uninterrupted) break puts on the kid's bookcase.
+// `hidden` buddies only appear once unlocked (see UI_KEYS.OTHO_UNLOCKED).
 export const CHARACTERS = {
-  dragon: { name: 'Ember', kind: 'dragon', svg: 'characters/ember.svg', css: 'characters/ember.css', prefix: 'ember', breakStartMs: 750, reward: 'gem' },
-  book:   { name: 'Page',  kind: 'book',   svg: 'characters/page.svg',  css: 'characters/page.css',  prefix: 'page',  breakStartMs: 700, reward: 'star' },
+  dragon: { name: 'Ember',     label: 'Ember the dragon',       prefix: 'ember',     svg: 'characters/ember.svg',     breakStartMs: 750, reward: 'book' },
+  book:   { name: 'Page',      label: 'Page the book',          prefix: 'page',      svg: 'characters/page.svg',      breakStartMs: 700, reward: 'book' },
+  wizard: { name: 'Yumyumnia', label: 'Yumyumnia the elf wizard', prefix: 'yumyumnia', svg: 'characters/yumyumnia.svg', breakStartMs: 750, reward: 'fireball' },
+  otho:   { name: 'Otho',      label: 'Otho Sackville-Baggins', prefix: 'otho',      svg: 'characters/otho.svg',      breakStartMs: 750, reward: 'spoon', hidden: true },
+};
+
+// A few lines in each buddy's own voice (others fall back to the defaults)
+export const VOICES = {
+  wizard: {
+    break:     'Break time! Go make some magic away from the screen!',
+    longBreak: 'All your rounds are done — that deserves a fireworks spell!',
+    welcome:   'You’re back! My fireballs missed you.',
+  },
+  otho: {
+    break:     'Off you go. I’ll guard the spoons. Hmph.',
+    longBreak: 'A big break? Fine. Don’t touch my spoons on the way out.',
+    welcome:   'Hmph. Back already? Very well, another round.',
+  },
 };
 
 export function characterInfo(key) {
   return CHARACTERS[key] ?? CHARACTERS.dragon;
+}
+
+// ── Rewards (things that go on the bookcase) ─────────────────────────────────
+export const REWARDS = {
+  book:     { one: 'book',     many: 'books' },
+  spoon:    { one: 'spoon',    many: 'spoons' },
+  fireball: { one: 'fireball', many: 'fireballs' },
+};
+
+export function rewardWord(kind, count) {
+  const r = REWARDS[kind] ?? REWARDS.book;
+  return count === 1 ? r.one : r.many;
 }
 
 // ── Default settings (chrome.storage.sync) ───────────────────────────────────
@@ -53,7 +82,8 @@ export const DEFAULT_SETTINGS = {
   soundEnabled:            true,
   persistOnRelaunch:       false,
   nagDuringBreak:          false,    // timer tab re-grabs focus during breaks
-  timerCharacter:          'dragon', // 'dragon' | 'book'
+  timerCharacter:          'dragon', // a key of CHARACTERS
+  kidName:                 '',       // optional: the buddy uses it in speech
 };
 
 // ── Default runtime state (chrome.storage.local) ─────────────────────────────
@@ -66,12 +96,14 @@ export const DEFAULT_STATE = {
   pausedRemaining:  null,   // ms remaining when paused
   snoozeUsed:       false,
   breakInterrupted: false,  // kid switched to another tab during this break
-  logs:             [],     // completed-phase entries (stats + rewards)
+  logs:             [],     // completed-phase entries (stats), capped
+  shelf:            [],     // bookcase: { k: reward kind, t: earned at } — kept forever
 };
 
 // UI-only flags the pages write themselves (never touched by the SW).
 export const UI_KEYS = {
-  INTRO_SEEN: 'introSeen',
+  INTRO_SEEN:    'introSeen',
+  OTHO_UNLOCKED: 'othoUnlocked',  // easter egg: type "spoons" on the timer tab
 };
 
 // ── Timing knobs ─────────────────────────────────────────────────────────────

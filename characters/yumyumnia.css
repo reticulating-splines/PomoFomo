@@ -1,0 +1,285 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   Yumyumnia the elf wizard — state styles.
+   character.js puts exactly one state class on the root <svg class="yumyumnia">:
+   yumyumnia--idle | --focus | --focus-tired | --focus-sleeping |
+   yumyumnia--break-start (≈750 ms one-shot) | --break-active | --break-done (≈1.6 s)
+   Pivots use view-box coordinates. Poses use the individual `rotate` / `scale`
+   properties (transitioned) so looping `transform` animations layer on top.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.yumyumnia { overflow: visible; display: block; }
+
+.yumyumnia__root   { transform-box: view-box; transform-origin: 100px 180px; }
+.yumyumnia__shadow { transform-box: view-box; transform-origin: 100px 181px; }
+.yumyumnia__inner  { transform-box: view-box; transform-origin: 100px 176px; }
+.yumyumnia__hair   { transform-box: view-box; transform-origin: 100px 40px; }
+.yumyumnia__head   { transform-box: view-box; transform-origin: 100px 104px; transition: rotate 500ms ease; }
+.yumyumnia__gaze   { transform-box: view-box; transform-origin: 100px 68px; transition: translate 400ms ease; }
+.yumyumnia__eyes-open { transform-box: view-box; transform-origin: 100px 68px; }
+.yumyumnia__arm-l  { transform-box: view-box; transform-origin: 81px 124px; transition: rotate 450ms cubic-bezier(.34,1.4,.64,1); }
+.yumyumnia__arm-r  { transform-box: view-box; transform-origin: 119px 124px; transition: rotate 450ms cubic-bezier(.34,1.4,.64,1); }
+.yumyumnia__flame-l { transform-box: view-box; transform-origin: 44px 89px; transition: scale 450ms ease, opacity 450ms ease, rotate 450ms cubic-bezier(.34,1.4,.64,1); }
+.yumyumnia__flame-r { transform-box: view-box; transform-origin: 156px 89px; transition: scale 450ms ease, opacity 450ms ease, rotate 450ms cubic-bezier(.34,1.4,.64,1); }
+.yumyumnia__book   { transform-box: view-box; transform-origin: 100px 132px; transition: opacity 400ms ease, rotate 500ms ease, translate 500ms ease; }
+.yumyumnia__fireball { transform-box: view-box; transform-origin: 100px 40px; }
+.yumyumnia__spark  { transform-box: fill-box; transform-origin: center; }
+.yumyumnia__z      { transform-box: fill-box; transform-origin: center; }
+.yumyumnia__wisp   { transform-box: fill-box; transform-origin: 50% 100%; }
+
+/* Hidden by default (idle look) */
+.yumyumnia__lids,
+.yumyumnia__eyes-closed,
+.yumyumnia__arc-happy,
+.yumyumnia__arc-sleep,
+.yumyumnia__mouth-open,
+.yumyumnia__book,
+.yumyumnia__smoke,
+.yumyumnia__fireball,
+.yumyumnia__zzz,
+.yumyumnia__sparks { opacity: 0; }
+
+.yumyumnia__lids,
+.yumyumnia__eyes-closed,
+.yumyumnia__mouth-open,
+.yumyumnia__mouth-smile,
+.yumyumnia__glow,
+.yumyumnia__eyes-open { transition: opacity 250ms ease; }
+
+/* ── Shared loops ─────────────────────────────────────────────────────────── */
+
+.yumyumnia__flame-l { animation: yum-flicker 0.9s ease-in-out infinite alternate; }
+.yumyumnia__flame-r { animation: yum-flicker 1.1s ease-in-out infinite alternate-reverse; }
+@keyframes yum-flicker {
+  0%   { transform: scaleY(1) skewX(0deg); }
+  50%  { transform: scaleY(1.1) skewX(3deg); }
+  100% { transform: scaleY(0.94) skewX(-3deg); }
+}
+
+@keyframes yum-blink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96%           { transform: scaleY(0.1); }
+}
+@keyframes yum-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50%      { transform: scale(1.012, 0.985); }
+}
+@keyframes yum-hair {
+  0%, 100% { transform: rotate(-1.4deg); }
+  50%      { transform: rotate(1.4deg); }
+}
+@keyframes yum-glow {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1; }
+}
+
+.yumyumnia__glow { animation: yum-glow 2.4s ease-in-out infinite; }
+
+/* ── idle ─────────────────────────────────────────────────────────────────── */
+
+.yumyumnia--idle .yumyumnia__arm-l { rotate: -12deg; }
+.yumyumnia--idle .yumyumnia__arm-r { rotate: 12deg; }
+.yumyumnia--idle .yumyumnia__inner { animation: yum-breathe 4s ease-in-out infinite; }
+.yumyumnia--idle .yumyumnia__hair  { animation: yum-hair 5s ease-in-out infinite; }
+.yumyumnia--idle .yumyumnia__eyes-open { animation: yum-blink 5s infinite; }
+
+/* ── focus: flames low and steady, spellbook, eyes down ───────────────────── */
+
+.yumyumnia--focus .yumyumnia__arm-l { rotate: -55deg; }
+.yumyumnia--focus .yumyumnia__arm-r { rotate: 55deg; }
+.yumyumnia--focus .yumyumnia__flame-l,
+.yumyumnia--focus .yumyumnia__flame-r { scale: 0.7; animation-duration: 1.8s; }
+.yumyumnia--focus .yumyumnia__gaze { translate: 0 2.5px; }
+.yumyumnia--focus .yumyumnia__book { opacity: 1; animation: yum-book 3s ease-in-out infinite; }
+.yumyumnia--focus .yumyumnia__inner { animation: yum-breathe 3.6s ease-in-out infinite; }
+.yumyumnia--focus .yumyumnia__eyes-open { animation: yum-blink 8s infinite; }
+@keyframes yum-book {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50%      { transform: translateY(-3px) rotate(2deg); }
+}
+
+/* ── focus-tired: flames dwindle to embers, droopy lids ───────────────────── */
+
+.yumyumnia--focus-tired .yumyumnia__arm-l { rotate: -64deg; }
+.yumyumnia--focus-tired .yumyumnia__arm-r { rotate: 64deg; }
+.yumyumnia--focus-tired .yumyumnia__flame-l,
+.yumyumnia--focus-tired .yumyumnia__flame-r { scale: 0.38; opacity: 0.8; animation-duration: 2.4s; }
+.yumyumnia--focus-tired .yumyumnia__lids { opacity: 1; }
+.yumyumnia--focus-tired .yumyumnia__glow { opacity: 0.5; animation: none; }
+.yumyumnia--focus-tired .yumyumnia__gaze { translate: 0 2px; }
+.yumyumnia--focus-tired .yumyumnia__book { opacity: 1; translate: 0 6px; rotate: 6deg; }
+.yumyumnia--focus-tired .yumyumnia__inner { animation: yum-sway 4.5s ease-in-out infinite; }
+.yumyumnia--focus-tired .yumyumnia__mouth-smile { animation: yum-yawn-hide 6s infinite; }
+.yumyumnia--focus-tired .yumyumnia__mouth-open  { animation: yum-yawn 6s infinite; }
+@keyframes yum-sway {
+  0%, 100% { transform: rotate(-1.6deg); }
+  50%      { transform: rotate(1.6deg); }
+}
+@keyframes yum-yawn      { 0%, 62%, 82%, 100% { opacity: 0; } 66%, 78% { opacity: 1; } }
+@keyframes yum-yawn-hide { 0%, 62%, 82%, 100% { opacity: 1; } 66%, 78% { opacity: 0; } }
+
+/* ── focus-sleeping: flames out, smoke, Z's ───────────────────────────────── */
+
+.yumyumnia--focus-sleeping .yumyumnia__arm-l { rotate: -70deg; }
+.yumyumnia--focus-sleeping .yumyumnia__arm-r { rotate: 70deg; }
+.yumyumnia--focus-sleeping .yumyumnia__flame-l,
+.yumyumnia--focus-sleeping .yumyumnia__flame-r { scale: 0.1; opacity: 0; }
+.yumyumnia--focus-sleeping .yumyumnia__eyes-open,
+.yumyumnia--focus-sleeping .yumyumnia__glow { opacity: 0; animation: none; }
+.yumyumnia--focus-sleeping .yumyumnia__eyes-closed,
+.yumyumnia--focus-sleeping .yumyumnia__arc-sleep { opacity: 1; }
+.yumyumnia--focus-sleeping .yumyumnia__head { rotate: 7deg; }
+.yumyumnia--focus-sleeping .yumyumnia__book { opacity: 1; translate: 0 10px; rotate: 12deg; }
+.yumyumnia--focus-sleeping .yumyumnia__inner { animation: yum-breathe 3.2s ease-in-out infinite; }
+.yumyumnia--focus-sleeping .yumyumnia__zzz { opacity: 1; }
+.yumyumnia--focus-sleeping .yumyumnia__z { animation: yum-z 2.4s ease-in-out infinite; }
+.yumyumnia--focus-sleeping .yumyumnia__z--2 { animation-delay: 0.8s; }
+.yumyumnia--focus-sleeping .yumyumnia__z--3 { animation-delay: 1.6s; }
+/* Arms swing the hands down, so the wisps sit where the hands rest */
+.yumyumnia--focus-sleeping .yumyumnia__smoke { opacity: 1; }
+.yumyumnia__wisp--l { translate: 0 54px; }
+.yumyumnia__wisp--r { translate: 0 54px; }
+.yumyumnia--focus-sleeping .yumyumnia__wisp { animation: yum-wisp 2.6s ease-out infinite; }
+.yumyumnia--focus-sleeping .yumyumnia__wisp--r { animation-delay: 1.3s; }
+@keyframes yum-z {
+  0%   { opacity: 0; transform: translate(0, 6px) scale(0.6); }
+  30%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(6px, -8px) scale(1.1); }
+}
+@keyframes yum-wisp {
+  0%   { opacity: 0; transform: translateY(4px) scaleY(0.6); }
+  30%  { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(-12px) scaleY(1.2); }
+}
+
+/* ── break-start: arms shoot up, flames burst, sparks ─────────────────────── */
+
+.yumyumnia--break-start .yumyumnia__arm-l { rotate: -6deg; }
+.yumyumnia--break-start .yumyumnia__arm-r { rotate: 6deg; }
+.yumyumnia--break-start .yumyumnia__flame-l,
+.yumyumnia--break-start .yumyumnia__flame-r { scale: 1.4; animation-duration: 0.35s; }
+.yumyumnia--break-start .yumyumnia__mouth-smile { opacity: 0; }
+.yumyumnia--break-start .yumyumnia__mouth-open { opacity: 1; }
+.yumyumnia--break-start .yumyumnia__root { animation: yum-jump 750ms cubic-bezier(.3,.7,.4,1) both; }
+.yumyumnia--break-start .yumyumnia__shadow { animation: yum-shadow 750ms cubic-bezier(.3,.7,.4,1) both; }
+.yumyumnia--break-start .yumyumnia__sparks { opacity: 1; }
+.yumyumnia--break-start .yumyumnia__spark { animation: yum-burst 750ms ease-out both; }
+@keyframes yum-jump {
+  0%   { transform: translateY(0) scale(1.04, 0.94); }
+  35%  { transform: translateY(-16px) scale(0.97, 1.04); }
+  70%  { transform: translateY(0) scale(1.04, 0.95); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes yum-shadow {
+  0%, 70%, 100% { transform: scale(1); opacity: 1; }
+  35%           { transform: scale(0.75); opacity: 0.6; }
+}
+@keyframes yum-burst {
+  0%   { opacity: 0; transform: scale(0.2) rotate(0deg); }
+  30%  { opacity: 1; transform: scale(1.3) rotate(45deg); }
+  100% { opacity: 0.3; transform: scale(0.9) rotate(90deg); }
+}
+
+/* ── break-active: juggling a fireball, happy eyes, swishing sleeves ──────── */
+
+.yumyumnia--break-active .yumyumnia__arm-l { rotate: -14deg; animation: yum-toss-l 2.4s ease-in-out infinite; }
+.yumyumnia--break-active .yumyumnia__arm-r { rotate: 14deg; animation: yum-toss-r 2.4s ease-in-out infinite; }
+.yumyumnia--break-active .yumyumnia__flame-l,
+.yumyumnia--break-active .yumyumnia__flame-r { scale: 1.12; animation-duration: 0.5s; }
+.yumyumnia--break-active .yumyumnia__eyes-open,
+.yumyumnia--break-active .yumyumnia__glow { opacity: 0; animation: none; }
+.yumyumnia--break-active .yumyumnia__eyes-closed,
+.yumyumnia--break-active .yumyumnia__arc-happy { opacity: 1; }
+.yumyumnia--break-active .yumyumnia__inner { animation: yum-bop 1.2s ease-in-out infinite; }
+.yumyumnia--break-active .yumyumnia__hair  { animation: yum-hair 1.2s ease-in-out infinite; }
+.yumyumnia--break-active .yumyumnia__fireball { opacity: 1; animation: yum-juggle 2.4s linear infinite; }
+.yumyumnia--break-active .yumyumnia__sparks { opacity: 1; }
+.yumyumnia--break-active .yumyumnia__spark { animation: yum-twinkle 2.2s ease-in-out infinite; }
+.yumyumnia--break-active .yumyumnia__spark--2,
+.yumyumnia--break-active .yumyumnia__spark--5 { animation-delay: -0.7s; }
+.yumyumnia--break-active .yumyumnia__spark--3,
+.yumyumnia--break-active .yumyumnia__spark--6 { animation-delay: -1.4s; }
+@keyframes yum-bop {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25%      { transform: translateY(-3px) rotate(-1.5deg); }
+  75%      { transform: translateY(-3px) rotate(1.5deg); }
+}
+/* Each hand dips to catch, then flicks up to throw */
+@keyframes yum-toss-l {
+  0%, 100% { transform: rotate(0deg); }
+  6%       { transform: rotate(-10deg); }
+  14%      { transform: rotate(6deg); }
+  45%      { transform: rotate(0deg); }
+}
+@keyframes yum-toss-r {
+  0%, 44%, 100% { transform: rotate(0deg); }
+  56%           { transform: rotate(10deg); }
+  64%           { transform: rotate(-6deg); }
+  95%           { transform: rotate(0deg); }
+}
+/* Arcs over her head from hand to hand */
+@keyframes yum-juggle {
+  0%   { transform: translate(-52px, 30px) scale(0.85); }
+  12%  { transform: translate(-34px, -4px) scale(1); }
+  25%  { transform: translate(0, -18px) scale(1.05); }
+  38%  { transform: translate(34px, -4px) scale(1); }
+  50%  { transform: translate(52px, 30px) scale(0.85); }
+  62%  { transform: translate(34px, -4px) scale(1); }
+  75%  { transform: translate(0, -18px) scale(1.05); }
+  88%  { transform: translate(-34px, -4px) scale(1); }
+  100% { transform: translate(-52px, 30px) scale(0.85); }
+}
+@keyframes yum-twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.6) rotate(0deg); }
+  50%      { opacity: 1; transform: scale(1.1) rotate(45deg); }
+}
+
+/* ── break-done: double-flame flourish ────────────────────────────────────── */
+
+.yumyumnia--break-done .yumyumnia__arm-l { rotate: -8deg; }
+.yumyumnia--break-done .yumyumnia__arm-r { rotate: 8deg; }
+.yumyumnia--break-done .yumyumnia__flame-l,
+.yumyumnia--break-done .yumyumnia__flame-r { animation: yum-flourish 1.6s ease-out both; }
+.yumyumnia--break-done .yumyumnia__mouth-smile { opacity: 0; }
+.yumyumnia--break-done .yumyumnia__mouth-open { opacity: 1; }
+.yumyumnia--break-done .yumyumnia__root { animation: yum-hops 1.6s ease-in-out both; }
+.yumyumnia--break-done .yumyumnia__sparks { opacity: 1; }
+.yumyumnia--break-done .yumyumnia__spark { animation: yum-burst 800ms ease-out both; }
+.yumyumnia--break-done .yumyumnia__spark--2,
+.yumyumnia--break-done .yumyumnia__spark--4,
+.yumyumnia--break-done .yumyumnia__spark--6 { animation-delay: 0.5s; }
+@keyframes yum-flourish {
+  0%   { transform: scale(1); }
+  20%  { transform: scale(1.45) rotate(-8deg); }
+  40%  { transform: scale(1.15) rotate(6deg); }
+  60%  { transform: scale(1.4) rotate(-4deg); }
+  100% { transform: scale(1); }
+}
+@keyframes yum-hops {
+  0%, 30%, 60%, 100% { transform: translateY(0); }
+  15%, 45%           { transform: translateY(-10px); }
+}
+
+/* Flames always burn upward: each pose counter-rotates the flame by its arm angle */
+.yumyumnia--idle .yumyumnia__flame-l           { rotate: 12deg; }
+.yumyumnia--idle .yumyumnia__flame-r           { rotate: -12deg; }
+.yumyumnia--focus .yumyumnia__flame-l          { rotate: 55deg; }
+.yumyumnia--focus .yumyumnia__flame-r          { rotate: -55deg; }
+.yumyumnia--focus-tired .yumyumnia__flame-l    { rotate: 64deg; }
+.yumyumnia--focus-tired .yumyumnia__flame-r    { rotate: -64deg; }
+.yumyumnia--focus-sleeping .yumyumnia__flame-l { rotate: 70deg; }
+.yumyumnia--focus-sleeping .yumyumnia__flame-r { rotate: -70deg; }
+.yumyumnia--break-start .yumyumnia__flame-l    { rotate: 6deg; }
+.yumyumnia--break-start .yumyumnia__flame-r    { rotate: -6deg; }
+.yumyumnia--break-active .yumyumnia__flame-l   { rotate: 14deg; }
+.yumyumnia--break-active .yumyumnia__flame-r   { rotate: -14deg; }
+.yumyumnia--break-done .yumyumnia__flame-l     { rotate: 8deg; }
+.yumyumnia--break-done .yumyumnia__flame-r     { rotate: -8deg; }
+
+/* ── Reduced motion: hold each state's expression, no looping motion ───────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .yumyumnia, .yumyumnia * { animation: none !important; transition: none !important; }
+  .yumyumnia--focus-tired .yumyumnia__mouth-open { opacity: 0 !important; }
+  .yumyumnia--break-active .yumyumnia__fireball { transform: translate(0, -18px); }
+  .yumyumnia--focus-sleeping .yumyumnia__smoke { opacity: 0.6; }
+}
