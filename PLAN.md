@@ -201,3 +201,26 @@ CSS (with a `prefers-reduced-motion` fallback that keeps each expression).
 - [ ] Close the timer tab → it comes back pinned
 - [ ] persistOnRelaunch off/on behaves across a Chrome restart
 - [ ] Reduced motion: no looping animation, expressions still read
+
+---
+
+## Development
+
+The extension itself has no build step: load the repo folder with
+**Load unpacked** in `chrome://extensions`. Node is only for dev tooling.
+
+```bash
+npm install          # once: puppeteer + Chrome for Testing
+npm test             # end-to-end test of the repo in headless Chrome
+npm run zip          # dist/PomoFomo-<version>.zip for the Web Store
+npm run release      # build the zip, then run the test against the unzipped copy
+npm run store        # regenerate store/ screenshots, icon and promo tiles
+```
+
+- `tools/e2e.mjs` drives the real service worker through a whole cycle
+  (warning, snooze, break, tab-switch nudge, bookcase rewards, long break,
+  pause/resume, stop, timer-tab recovery, popup and settings) and saves
+  screenshots of key moments to `tools/out/e2e/`.
+- `tools/zip.mjs` lists the shipped files in `EXTENSION_FILES`; add new
+  top-level folders there.
+- Bump `version` in `manifest.json` before `npm run release`.

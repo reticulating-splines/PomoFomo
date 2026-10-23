@@ -1,0 +1,16 @@
+{
+  "name": "pomofomo",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Dev tooling for the PomoFomo Chrome extension (tests, store assets, release zip).",
+  "type": "module",
+  "scripts": {
+    "test": "node tools/e2e.mjs",
+    "zip": "node tools/zip.mjs",
+    "release": "node tools/zip.mjs && node tools/test-zip.mjs",
+    "store": "node tools/store-assets.mjs && node tools/promo-small.mjs && node tools/promo-marquee.mjs"
+  },
+  "devDependencies": {
+    "puppeteer": "^24.0.0"
+  }
+}
