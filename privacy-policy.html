@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PomoFomo — Privacy Policy</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 680px;
+      margin: 60px auto;
+      padding: 0 24px 80px;
+      color: #222;
+      line-height: 1.7;
+    }
+    h1 { font-size: 1.8rem; margin-bottom: 4px; }
+    h2 { font-size: 1.1rem; margin-top: 2rem; margin-bottom: 0.4rem; }
+    p, li { font-size: 1rem; }
+    ul { padding-left: 1.4em; }
+    .meta { color: #666; font-size: 0.9rem; margin-bottom: 2rem; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+
+  <h1>PomoFomo Privacy Policy</h1>
+  <p class="meta">Last updated: October 2026</p>
+
+  <p>
+    PomoFomo is a Chrome browser extension that helps children take regular
+    breaks from the screen. This policy explains what data the extension
+    handles and how.
+  </p>
+
+  <hr>
+
+  <h2>Information we collect</h2>
+  <p>
+    PomoFomo does <strong>not</strong> collect, transmit, store on any server,
+    or share any personal information. The developer never receives any data
+    from the extension.
+  </p>
+  <p>To work, the extension keeps the following data in Chrome’s own extension storage:</p>
+  <ul>
+    <li>
+      <strong>Timer settings</strong> (focus and break lengths, rounds before a
+      long break, character, sounds, nag mode, resume after restart), plus an
+      <strong>optional first name</strong> you can enter so the
+      character can say hi. Leave it blank and no name is stored.
+    </li>
+    <li>
+      <strong>Timer state</strong> (current phase, time remaining, round number,
+      whether the one-per-round snooze has been used)
+    </li>
+    <li>
+      <strong>A session log</strong> of finished focus rounds and breaks: when
+      each started and ended, whether it ran its full length, and whether the
+      child left a break early. It is used only to show the “This week” stats.
+      The most recent 500 entries are kept; older ones are deleted
+      automatically.
+    </li>
+    <li>
+      <strong>The bookcase</strong>: one entry per full break (the kind of
+      reward earned, such as a book, and when). It is kept until the extension
+      is removed, so the bookcase can keep filling up.
+    </li>
+    <li>Whether the first-run welcome screen has been seen.</li>
+  </ul>
+  <p>
+    Timer state, the session log, the bookcase and the welcome flag stay on
+    your device.
+    <strong>Timer settings are saved with Chrome sync</strong>, so if you are
+    signed in to Chrome with sync turned on, Chrome copies them to your other
+    computers through your Google account, the same way it syncs other
+    extension settings. This includes the optional first name, if you
+    entered one. That copy is handled by Google under
+    <a href="https://policies.google.com/privacy">Google’s Privacy Policy</a>;
+    it never passes through the developer. With Chrome sync off, settings stay
+    on your device.
+  </p>
+
+  <hr>
+
+  <h2>Checking for tab switches during breaks</h2>
+  <p>
+    During a break, PomoFomo notices when a different browser tab is brought
+    to the front. It checks only whether that tab is PomoFomo’s own timer tab.
+    If it isn’t, the break is marked as left early (a single yes/no) and the
+    extension shows one reminder notification.
+  </p>
+  <p>
+    PomoFomo does <strong>not</strong> record, store or send which tab or
+    website was opened, its address, its title or its contents. Outside of
+    breaks, tab switches are ignored.
+  </p>
+
+  <hr>
+
+  <h2>Permissions used</h2>
+  <p>
+    PomoFomo requests the following Chrome permissions solely to operate the
+    timer. No permission is used to send data anywhere.
+  </p>
+  <ul>
+    <li><strong>alarms</strong> — to advance the timer reliably when the browser is idle</li>
+    <li><strong>storage</strong> — to save settings (synced by Chrome as described above), timer state, the session log and the bookcase</li>
+    <li><strong>tabs</strong> — to open, pin, and manage the dedicated timer tab, bring it to the front when a break starts, and check whether a tab brought to the front during a break is the timer tab</li>
+    <li><strong>notifications</strong> — for the heads-up before a break, the break alert, and a reminder if a break is left early</li>
+  </ul>
+
+  <hr>
+
+  <h2>Third-party services</h2>
+  <p>
+    PomoFomo makes no network requests and uses no third-party services,
+    analytics, advertising, or tracking of any kind. Its fonts, pictures and
+    sounds are all bundled inside the extension.
+  </p>
+
+  <hr>
+
+  <h2>Children's privacy</h2>
+  <p>
+    PomoFomo is designed for use by children under parental supervision.
+    Because no data is ever sent to the developer or any third party, it
+    complies with COPPA (the Children's Online Privacy Protection Act) and
+    similar regulations.
+  </p>
+
+  <hr>
+
+  <h2>Deleting your data</h2>
+  <p>
+    Removing PomoFomo from Chrome deletes its timer state, session log,
+    bookcase and settings from that computer. You can clear the optional name
+    at any time in the extension’s settings. Settings synced through Chrome sync can be
+    cleared from your Google account in Chrome’s sync settings.
+  </p>
+
+  <hr>
+
+  <h2>Changes to this policy</h2>
+  <p>
+    If the extension is ever updated in a way that affects data handling, this
+    policy will be updated and the "Last updated" date will change.
+  </p>
+
+  <hr>
+
+  <h2>Contact</h2>
+  <p>
+    If you have questions about this privacy policy, please open an issue at:<br>
+    <a href="https://github.com/reticulating-splines/pomofomo">https://github.com/reticulating-splines/pomofomo</a>
+  </p>
+
+</body>
+</html>
