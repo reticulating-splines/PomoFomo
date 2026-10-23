@@ -112,15 +112,15 @@
           </div>
         </div>
         <div class="stepper" data-key="longBreakMinutes" data-min="5" data-max="30" data-step="5" data-unit="min">
-          <span class="stepper__label" id="lblLong">Big break</span>
+          <span class="stepper__label" id="lblLong">Long break</span>
           <div class="stepper__ctl" role="group" aria-labelledby="lblLong">
-            <button type="button" class="stepper__btn" data-dir="-1" aria-label="Shorter big break"><svg class="icon"><use href="../assets/sprite.svg#minus"/></svg></button>
+            <button type="button" class="stepper__btn" data-dir="-1" aria-label="Shorter long break"><svg class="icon"><use href="../assets/sprite.svg#minus"/></svg></button>
             <output class="stepper__val" aria-live="polite"></output>
-            <button type="button" class="stepper__btn" data-dir="1" aria-label="Longer big break"><svg class="icon"><use href="../assets/sprite.svg#plus"/></svg></button>
+            <button type="button" class="stepper__btn" data-dir="1" aria-label="Longer long break"><svg class="icon"><use href="../assets/sprite.svg#plus"/></svg></button>
           </div>
         </div>
         <div class="stepper" data-key="sessionsBeforeLongBreak" data-min="2" data-max="6" data-step="1" data-unit="rounds">
-          <span class="stepper__label" id="lblRounds">Big break after</span>
+          <span class="stepper__label" id="lblRounds">Long break after</span>
           <div class="stepper__ctl" role="group" aria-labelledby="lblRounds">
             <button type="button" class="stepper__btn" data-dir="-1" aria-label="Fewer rounds"><svg class="icon"><use href="../assets/sprite.svg#minus"/></svg></button>
             <output class="stepper__val" aria-live="polite"></output>
@@ -149,13 +149,13 @@
           <span class="buddy__art" data-char="wizard" aria-hidden="true"></span>
           <span class="buddy__name">Yumyumnia</span>
           <span class="buddy__kind">elf wizard · fireballs</span>
-          <span class="buddy__credit">Designed by a real 8-year-old</span>
+          <span class="buddy__credit">Designed by an 8-year-old</span>
         </label>
         <label class="buddy" id="buddyOtho" hidden>
           <input type="radio" name="timerCharacter" value="otho">
           <span class="buddy__art" data-char="otho" aria-hidden="true"></span>
           <span class="buddy__name">Otho</span>
-          <span class="buddy__kind">Sackville-Baggins · spoons</span>
+          <span class="buddy__kind">S.B. · spoons</span>
         </label>
       </div>
 
@@ -163,7 +163,7 @@
         <label class="field">
           <span class="field__text">
             <span class="switch__label">Your kid’s name</span>
-            <span class="switch__hint">Optional. The buddy uses it to say hi.</span>
+            <span class="switch__hint">Optional. Used in the greeting.</span>
           </span>
           <input class="field__input" id="kidName" type="text" maxlength="20" autocomplete="off" spellcheck="false" placeholder="e.g. Sam">
         </label>

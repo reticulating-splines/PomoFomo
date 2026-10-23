@@ -119,7 +119,7 @@ function phaseLabel() {
     case STATUS.FOCUS:         return 'Focusing';
     case STATUS.FOCUS_WARNING: return 'Break soon';
     case STATUS.BREAK:         return 'On a break';
-    case STATUS.LONG_BREAK:    return 'Big break';
+    case STATUS.LONG_BREAK:    return 'Long break';
     default:                   return 'Ready to start';
   }
 }
@@ -187,7 +187,7 @@ function populateSettings() {
 
   const n = settings.sessionsBeforeLongBreak;
   el.cycleHint.textContent =
-    `${n} rounds of ${settings.focusMinutes} min, with ${settings.shortBreakMinutes} min breaks, then a ${settings.longBreakMinutes} min big break.`;
+    `${n} rounds of ${settings.focusMinutes} min, with ${settings.shortBreakMinutes} min breaks, then a ${settings.longBreakMinutes} min long break.`;
 }
 
 function renderStepper(stepper, value) {

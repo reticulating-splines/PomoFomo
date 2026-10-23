@@ -119,9 +119,9 @@ function applyCharacterText() {
   for (const use of [el.rewardHintIcon, el.toastIcon, el.introRewardIcon]) {
     use.setAttribute('href', icon);
   }
-  el.introTitle.textContent = `Hi! I’m ${info.name}.`;
+  el.introTitle.textContent = `I’m ${info.name}.`;
   el.introRewardText.innerHTML =
-    `<strong>Stay away for the whole break</strong> to earn a ${rewardWord(info.reward, 1)} for your bookcase!`;
+    `<strong>Stay off for the whole break</strong> and a ${rewardWord(info.reward, 1)} goes on your shelf.`;
 }
 
 // ── Transition effects (chimes, celebrations, rewards) ───────────────────────
@@ -156,8 +156,7 @@ function celebrate(prev, next) {
   if (after > before) {
     const { k } = next.shelf.at(-1);
     sounds.playChime('reward');
-    const name = settings.kidName ? `Nice one, ${settings.kidName}! ` : '';
-    showToast(`${name}+1 ${rewardWord(k, 1)} for your bookcase!`, k);
+    showToast(`+1 ${rewardWord(k, 1)} on your shelf.`, k);
     el.hoard.classList.remove('is-bumped');
     void el.hoard.offsetWidth; // restart the bump animation
     el.hoard.classList.add('is-bumped');
@@ -264,7 +263,7 @@ function renderRounds() {
   }));
 
   el.roundLabel.textContent = state.status === STATUS.LONG_BREAK
-    ? 'All rounds done!'
+    ? 'All rounds done'
     : `Round ${current} of ${total}`;
 }
 
@@ -288,17 +287,17 @@ function renderShelf() {
   const parts = Object.keys(REWARDS)
     .filter(k => counts[k])
     .map(k => `${counts[k]} ${rewardWord(k, counts[k])}`);
-  el.shelfSummary.textContent = parts.length ? parts.join(' · ') : 'Empty for now — but not for long!';
+  el.shelfSummary.textContent = parts.length ? parts.join(' · ') : 'Empty, for now.';
 
   el.shelfCase.innerHTML = renderBookcase(shelf, { since: startOfToday(), paintFilter: 'wc-wood' });
 
   const next = MILESTONES.find(m => m.at > shelf.length);
   const { reward } = characterInfo(settings.timerCharacter);
   el.shelfFoot.textContent = !shelf.length
-    ? `Take a full break to put your first ${rewardWord(reward, 1)} here.`
+    ? `Take a full break and your first ${rewardWord(reward, 1)} goes here.`
     : next
-      ? `${next.at - shelf.length} more full break${next.at - shelf.length === 1 ? '' : 's'} until something special appears…`
-      : 'Every full break adds one more. How full can it get?';
+      ? `Something turns up after ${next.at - shelf.length} more full break${next.at - shelf.length === 1 ? '' : 's'}.`
+      : 'Every full break adds one more.';
 }
 
 el.hoard.addEventListener('click', () => {
@@ -318,7 +317,7 @@ function renderControls() {
 
   el.actionsNote.textContent =
     idle ? `${settings.focusMinutes} min focus, then a ${settings.shortBreakMinutes} min break`
-    : canSnooze ? 'You can do this once each round.'
+    : canSnooze ? 'Once per round.'
     : '';
 }
 
@@ -329,10 +328,10 @@ function renderBreakCard() {
 
   const isLong = state.status === STATUS.LONG_BREAK;
   const { reward } = characterInfo(settings.timerCharacter);
-  el.breakTitle.textContent = isLong ? 'Big break!' : 'Break time!';
+  el.breakTitle.textContent = isLong ? 'Long break' : 'Break time';
   el.breakLede.textContent = isLong
-    ? 'You finished every round! Get away from the screen for a while.'
-    : 'Step away from the screen. Here’s an idea:';
+    ? 'That’s every round done. Get away from the screen for a while.'
+    : 'Off the screen for a bit. One idea:';
 
   // One stable idea list per break (seeded by the log length, which only
   // changes between phases), shifted by "Another idea" presses.
@@ -344,8 +343,8 @@ function renderBreakCard() {
   const word = rewardWord(reward, 1);
   el.rewardHint.classList.toggle('is-lost', lost);
   el.rewardHintText.textContent = lost
-    ? `No ${word} this break — you went back to the screen. You can still finish your break!`
-    : `Stay away for the whole break to earn a ${word} for your bookcase!`;
+    ? `Back on the screen, so no ${word} this time. You can still finish the break.`
+    : `Stay off the screen for the whole break and a ${word} goes on your shelf.`;
 }
 
 function showIdea(animate) {
@@ -373,7 +372,7 @@ function phaseName() {
     case STATUS.FOCUS:
     case STATUS.FOCUS_WARNING: return 'Focus';
     case STATUS.BREAK:         return 'Break';
-    case STATUS.LONG_BREAK:    return 'Big break';
+    case STATUS.LONG_BREAK:    return 'Long break';
     default:                   return '';
   }
 }
@@ -384,7 +383,7 @@ function caption() {
     case STATUS.FOCUS:
     case STATUS.FOCUS_WARNING: return 'until break';
     case STATUS.BREAK:         return 'of break left';
-    case STATUS.LONG_BREAK:    return 'of big break left';
+    case STATUS.LONG_BREAK:    return 'of long break left';
     default:                   return 'of focus time';
   }
 }
@@ -392,29 +391,29 @@ function caption() {
 function bubbleText(left) {
   const name = settings.kidName ? `, ${settings.kidName}` : '';
   const voice = VOICES[settings.timerCharacter] ?? {};
-  if (celebrating) return voice.welcome ?? `Welcome back${name}! Let’s do another round.`;
-  if (state.isPaused) return 'Taking a pause. We’ll pick up right where we left off.';
+  if (celebrating) return voice.welcome ?? `Back${name}. Next round’s started.`;
+  if (state.isPaused) return 'Paused for now.';
   const progress = phaseProgress(state);
   switch (state.status) {
     case STATUS.FOCUS:
-      if (state.snoozeUsed) return 'Okay, five more minutes — then break time!';
+      if (state.snoozeUsed) return 'Five more minutes. Then break.';
       return progress < 0.08
-        ? 'Let’s go! I’ll call you when it’s break time.'
-        : 'I’m keeping time. You keep going!';
+        ? 'Timer’s running. I’ll tell you when it’s break time.'
+        : 'I’ll keep time. You do your thing.';
     case STATUS.FOCUS_WARNING:
       return left <= SLEEPY_MS
-        ? 'Zzz… break time is coming…'
-        : 'Almost break time! Find a good place to stop.';
+        ? 'Zzz…'
+        : 'Two minutes. Find a good place to stop.';
     case STATUS.BREAK:
     case STATUS.LONG_BREAK:
       if (state.breakInterrupted && document.visibilityState === 'visible') {
-        return 'Welcome back! Your break isn’t over yet.';
+        return 'You’re back early. The break isn’t over.';
       }
       return state.status === STATUS.LONG_BREAK
-        ? voice.longBreak ?? 'You did every round! Go play!'
-        : voice.break ?? 'Break time! Get up and move with me!';
+        ? voice.longBreak ?? 'Every round done. Long break. Go do something else.'
+        : voice.break ?? 'Break. Off the screen for a bit.';
     default:
-      return `${greeting()}${name}! Ready when you are.`;
+      return `${greeting()}${name}. Press Start when you’re ready.`;
   }
 }
 
@@ -444,7 +443,7 @@ async function showIntro() {
 el.btnIntro.addEventListener('click', () => el.intro.close());
 
 // ── Easter egg: type "spoons" ────────────────────────────────────────────────
-// Otho Sackville-Baggins arrives to collect the spoons.
+// Otho S.B. arrives to collect the spoons.
 
 let typed = '';
 document.addEventListener('keydown', async e => {
@@ -455,7 +454,7 @@ document.addEventListener('keydown', async e => {
   await chrome.storage.local.set({ [UI_KEYS.OTHO_UNLOCKED]: true });
   await saveSettings({ timerCharacter: 'otho' });
   sounds.playChime('snooze');
-  showToast('Otho Sackville-Baggins has come for the spoons!', 'spoon');
+  showToast('Otho S.B. has come for the spoons.', 'spoon');
 });
 
 // ── Sound unlock ─────────────────────────────────────────────────────────────

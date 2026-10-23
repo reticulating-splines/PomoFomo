@@ -40,20 +40,20 @@ export const CHARACTERS = {
   dragon: { name: 'Ember',     label: 'Ember the dragon',       prefix: 'ember',     svg: 'characters/ember.svg',     breakStartMs: 750, reward: 'book' },
   book:   { name: 'Page',      label: 'Page the book',          prefix: 'page',      svg: 'characters/page.svg',      breakStartMs: 700, reward: 'book' },
   wizard: { name: 'Yumyumnia', label: 'Yumyumnia the elf wizard', prefix: 'yumyumnia', svg: 'characters/yumyumnia.svg', breakStartMs: 750, reward: 'fireball' },
-  otho:   { name: 'Otho',      label: 'Otho Sackville-Baggins', prefix: 'otho',      svg: 'characters/otho.svg',      breakStartMs: 750, reward: 'spoon', hidden: true },
+  otho:   { name: 'Otho',      label: 'Otho S.B.', prefix: 'otho',      svg: 'characters/otho.svg',      breakStartMs: 750, reward: 'spoon', hidden: true },
 };
 
 // A few lines in each buddy's own voice (others fall back to the defaults)
 export const VOICES = {
   wizard: {
-    break:     'Break time! Go make some magic away from the screen!',
-    longBreak: 'All your rounds are done — that deserves a fireworks spell!',
-    welcome:   'You’re back! My fireballs missed you.',
+    break:     'Break. Go do something that isn’t a screen. I’ll mind the fire.',
+    longBreak: 'Every round done. Long break. Earned it.',
+    welcome:   'Back. Fireballs are still lit. Next round’s going.',
   },
   otho: {
     break:     'Off you go. I’ll guard the spoons. Hmph.',
-    longBreak: 'A big break? Fine. Don’t touch my spoons on the way out.',
-    welcome:   'Hmph. Back already? Very well, another round.',
+    longBreak: 'A long break? Fine. Don’t touch my spoons on the way out.',
+    welcome:   'Hmph. Back already. Another round, then.',
   },
 };
 

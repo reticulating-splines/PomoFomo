@@ -452,25 +452,22 @@ async function clearNotifications(...ids) {
 }
 
 async function showWarningNotification(state) {
-  const settings = await getSettings();
-  const { name } = characterInfo(settings.timerCharacter);
   await notify(NOTE.WARNING, {
     title: `${WARNING_MINUTES} minutes until break`,
     message: state.snoozeUsed
-      ? `Time to find a good place to stop. ${name} will call you soon.`
-      : `Find a good place to stop — save your game, finish your sentence. ${name} will call you soon.`,
+      ? 'No more snoozes this round. Find a good place to stop.'
+      : 'Find a good place to stop. Save the game, finish the sentence.',
     priority: 0,
     silent: true, // the timer tab plays its own gentle chime
   });
 }
 
 async function showBreakNotification(settings, isLong, breakMinutes) {
-  const { name } = characterInfo(settings.timerCharacter);
   await notify(NOTE.BREAK, {
-    title: isLong ? 'Big break time!' : 'Break time!',
+    title: isLong ? 'Long break' : 'Break time',
     message: isLong
-      ? `You finished every round! Take ${breakMinutes} minutes away from the screen. ${name} will keep watch.`
-      : `Great focus! Take ${breakMinutes} minutes to stretch, drink water and rest your eyes.`,
+      ? `Every round done. ${breakMinutes} minutes away from the screen.`
+      : `${breakMinutes} minutes off the screen. Stretch, get some water, rest your eyes.`,
     priority: 2,
   });
 }
@@ -479,8 +476,8 @@ async function showNudgeNotification(settings, remaining) {
   const info = characterInfo(settings.timerCharacter);
   const mins = Math.max(1, Math.ceil(remaining / MINUTE));
   await notify(NOTE.NUDGE, {
-    title: 'Psst… it’s still break time',
-    message: `${mins} more minute${mins === 1 ? '' : 's'} to rest. ${info.name} will call you when it’s time to go again.`,
+    title: 'Still break time',
+    message: `${mins} more minute${mins === 1 ? '' : 's'}. ${info.name} will tell you when it’s over.`,
     priority: 1,
   });
 }
@@ -571,7 +568,7 @@ function actionTitle(state) {
     case STATUS.FOCUS:
     case STATUS.FOCUS_WARNING: return 'PomoFomo — focusing';
     case STATUS.BREAK:         return 'PomoFomo — break time';
-    case STATUS.LONG_BREAK:    return 'PomoFomo — big break';
+    case STATUS.LONG_BREAK:    return 'PomoFomo — long break';
     default:                   return 'PomoFomo';
   }
 }

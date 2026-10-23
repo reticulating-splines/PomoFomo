@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "PomoFomo",
   "version": "2.0.0",
-  "description": "A friendly break buddy for kids. Focus, take a real break, earn a gem, go again!",
+  "description": "A break timer for kids. Focus, take a real break, fill up a bookcase.",
   "minimum_chrome_version": "120",
 
   "permissions": ["alarms", "storage", "tabs", "notifications"],

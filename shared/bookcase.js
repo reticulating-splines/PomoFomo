@@ -17,10 +17,10 @@ const SPINES = ['#E5507A', '#6C6FF5', '#1FAE79', '#F29A1F', '#36B9E8', '#9B6BDF'
 
 // Keepsakes join the shelf right after these counts
 export const MILESTONES = [
-  { at: 10,  kind: 'plant',  note: 'A little plant moved onto your shelf!' },
-  { at: 25,  kind: 'trophy', note: 'You won a trophy for 25 full breaks!' },
-  { at: 50,  kind: 'cat',    note: 'A sleepy cat moved in. 50 full breaks!' },
-  { at: 100, kind: 'crown',  note: '100 full breaks! You’re the Break Champion.' },
+  { at: 10,  kind: 'plant',  note: '10 full breaks. Someone left a plant on your shelf.' },
+  { at: 25,  kind: 'trophy', note: '25 full breaks. That’s a trophy.' },
+  { at: 50,  kind: 'cat',    note: '50 full breaks. A cat has moved in. It isn’t leaving.' },
+  { at: 100, kind: 'crown',  note: '100 full breaks. Honestly, impressive.' },
 ];
 
 export function milestoneAt(count) {

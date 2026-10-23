@@ -29,7 +29,7 @@ PomoFomo/
 │   ├── page.svg / page.css    ← Page the book (reward: books)
 │   ├── yumyumnia.svg / .css   ← Yumyumnia the elf wizard (reward: fireballs),
 │   │                            from an 8-year-old's drawing
-│   └── otho.svg / otho.css    ← Otho Sackville-Baggins (reward: spoons), hidden
+│   └── otho.svg / otho.css    ← Otho S.B. (reward: spoons), hidden
 ├── timer/                     ← the pinned tab (main experience)
 │   ├── timer.html / timer.css / timer.js
 ├── popup/                     ← toolbar remote for grown-ups
@@ -75,7 +75,7 @@ PomoFomo/
    once). A full, uninterrupted break puts the current buddy’s reward on the
    **bookcase** (a book for Ember and Page, a fireball for Yumyumnia, a spoon
    for Otho): toast, chime, and the top-bar bookcase count bumps.
-5. After `sessionsBeforeLongBreak` rounds comes a **big break**, then the
+5. After `sessionsBeforeLongBreak` rounds comes a **long break**, then the
    cycle restarts at round 1.
 
 ### Bookcase
@@ -196,7 +196,7 @@ CSS (with a `prefers-reduced-motion` fallback that keeps each expression).
 - [ ] Full break → reward toast, item on the bookcase; interrupted → none
 - [ ] Bookcase persists through Stop and restarts; milestones add keepsakes
 - [ ] Typing “spoons” unlocks and switches to Otho; spoons go on the shelf
-- [ ] Round N → big break; big break → round 1
+- [ ] Round N → long break; long break → round 1
 - [ ] Pause/resume/skip/stop from the popup; popup stays live
 - [ ] Close the timer tab → it comes back pinned
 - [ ] persistOnRelaunch off/on behaves across a Chrome restart
