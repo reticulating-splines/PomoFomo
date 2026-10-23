@@ -53,17 +53,28 @@ export function isFullBreak(entry) {
     && !entry.interrupted;
 }
 
-function startOfToday() {
+export function startOfToday() {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   return d.getTime();
 }
 
-/** Rewards (full breaks) earned since midnight. */
-export function rewardsToday(logs) {
+/** Bookcase items earned since midnight. */
+export function shelfToday(shelf) {
   const since = startOfToday();
-  return (Array.isArray(logs) ? logs : [])
-    .filter(e => e.endedAt >= since && isFullBreak(e)).length;
+  return (Array.isArray(shelf) ? shelf : []).filter(item => item.t >= since).length;
+}
+
+/** { book: n, spoon: n, fireball: n } across the whole bookcase. */
+export function shelfCounts(shelf) {
+  const counts = {};
+  for (const item of Array.isArray(shelf) ? shelf : []) counts[item.k] = (counts[item.k] ?? 0) + 1;
+  return counts;
+}
+
+export function greeting(now = new Date()) {
+  const h = now.getHours();
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 }
 
 /**

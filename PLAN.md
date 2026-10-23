@@ -4,7 +4,7 @@
 A Chrome extension that helps kids aged 8–11 **take real breaks** during
 screen time. A friendly character keeps time in a pinned tab, warns before a
 break, calls the kid away from the screen, suggests something to do, and
-rewards breaks taken in full. No lockout and no content scripts: the kid
+rewards every break taken in full with something for their bookcase. No lockout and no content scripts: the kid
 stays in charge, and the extension only needs `alarms`, `storage`, `tabs` and
 `notifications`.
 
@@ -20,12 +20,16 @@ PomoFomo/
 │   ├── constants.js           ← enums, characters, defaults, timing knobs
 │   ├── storage.js             ← chrome.storage wrappers
 │   ├── timing.js              ← pure helpers: remaining time, progress, stats, rewards
-│   ├── break-ideas.js         ← off-screen break suggestions
+│   ├── break-ideas.js         ← off-screen break suggestions (+ one per buddy)
+│   ├── bookcase.js            ← draws the bookcase SVG from the shelf
 │   └── tokens.css             ← fonts, colour tokens, buttons (both pages)
 ├── characters/
 │   ├── character.js           ← controller: inject SVG, toggle one state class
-│   ├── ember.svg / ember.css  ← Ember the dragon (reward: gems)
-│   └── page.svg / page.css    ← Page the book (reward: stars)
+│   ├── ember.svg / ember.css  ← Ember the dragon (reward: books)
+│   ├── page.svg / page.css    ← Page the book (reward: books)
+│   ├── yumyumnia.svg / .css   ← Yumyumnia the elf wizard (reward: fireballs),
+│   │                            from an 8-year-old's drawing
+│   └── otho.svg / otho.css    ← Otho Sackville-Baggins (reward: spoons), hidden
 ├── timer/                     ← the pinned tab (main experience)
 │   ├── timer.html / timer.css / timer.js
 ├── popup/                     ← toolbar remote for grown-ups
@@ -33,7 +37,7 @@ PomoFomo/
 ├── sounds/sounds.js           ← Web Audio synthesis, no audio files
 ├── favicon/favicon.js         ← per-tick progress favicon
 └── assets/
-    ├── sprite.svg             ← UI icons, gem/star, 11 break-idea illustrations
+    ├── sprite.svg             ← UI icons, rewards, bookcase, break-idea illustrations
     ├── fonts/                 ← Fredoka + Nunito variable woff2 (OFL)
     └── icons/                 ← icon.svg (128 tile), icon-small.svg (16/32), PNGs
 ```
@@ -68,13 +72,30 @@ PomoFomo/
    20 s) marks it `breakInterrupted` and sends ONE friendly nudge
    notification. Optional **nag mode** re-activates the timer tab every 30 s.
 4. **Break ends**: auto-rolls into the next round (the kid only presses Start
-   once). A full, uninterrupted break earns a **gem** (Ember) or **star**
-   (Page): toast, chime and today’s count in the top bar.
+   once). A full, uninterrupted break puts the current buddy’s reward on the
+   **bookcase** (a book for Ember and Page, a fireball for Yumyumnia, a spoon
+   for Otho): toast, chime, and the top-bar bookcase count bumps.
 5. After `sessionsBeforeLongBreak` rounds comes a **big break**, then the
    cycle restarts at round 1.
 
-Rewards are never stored as a counter: they are derived from the log
-(`isFullBreak`: a break that completed naturally and wasn’t interrupted).
+### Bookcase
+- `shelf` in `chrome.storage.local` is an append-only list of
+  `{ k: 'book' | 'spoon' | 'fireball', t }`, written by the SW in the same
+  write as the break → focus rollover. Unlike the log it is never trimmed,
+  and Stop/restarts leave it alone. Updating from v1 seeds it with one book
+  per full break already in the log.
+- The top-bar chip opens a dialog that draws every item (look seeded by
+  index + time, so it never changes), wraps onto new shelves, always shows
+  room to grow, sparkles today’s additions and drops the newest one in.
+- Keepsakes join the shelf at 10 (plant), 25 (trophy), 50 (cat) and 100
+  (crown) items, each with its own toast.
+
+### Little touches
+- Optional kid’s name (popup) used in greetings, toasts and the bookcase title;
+  time-of-day greeting at idle.
+- Each buddy has a signature break idea offered on alternate breaks.
+- Easter egg: typing `spoons` on the timer tab (or clicking the popup logo five
+  times) unlocks Otho; unlocking from the tab also switches to him.
 
 ---
 
@@ -90,16 +111,18 @@ Rewards are never stored as a counter: they are derived from the log
   snoozeUsed: false,
   breakInterrupted: false,   // kid switched tabs during this break
   logs: [ { type: 'focus'|'shortBreak'|'longBreak', startedAt, endedAt,
-            scheduledDuration, completedNaturally, snoozed?, interrupted? } ]
+            scheduledDuration, completedNaturally, snoozed?, interrupted? } ],
+  shelf: [ { k: 'book'|'spoon'|'fireball', t } ]   // never trimmed
 }
 // chrome.storage.local — UI-only, written by the timer tab
-{ introSeen: true }
+{ introSeen: true, othoUnlocked: true }
 
 // chrome.storage.sync — settings
 {
   focusMinutes: 20, shortBreakMinutes: 5, longBreakMinutes: 15,
   sessionsBeforeLongBreak: 3, soundEnabled: true, persistOnRelaunch: false,
-  nagDuringBreak: false, timerCharacter: 'dragon' | 'book'
+  nagDuringBreak: false, timerCharacter: 'dragon' | 'book' | 'wizard' | 'otho',
+  kidName: ''
 }
 ```
 
@@ -120,14 +143,14 @@ Rewards are never stored as a counter: they are derived from the log
 ---
 
 ## Characters
-Both share one state vocabulary; `character.js` sets exactly one class
+All four share one state vocabulary; `character.js` sets exactly one class
 `{prefix}--{state}` on the SVG root and all motion lives in the character’s
 CSS (with a `prefers-reduced-motion` fallback that keeps each expression).
 
 | State            | Trigger                                   |
 |------------------|-------------------------------------------|
 | `idle`           | idle or paused                            |
-| `focus`          | focusing (Ember reads, Page wears glasses)|
+| `focus`          | focusing (reading, glasses, spellbook, polishing a spoon) |
 | `focus-tired`    | heads-up window                           |
 | `focus-sleeping` | last 10 s of the heads-up (UI-only)       |
 | `break-start`    | break begins (750/700 ms → break-active)  |
@@ -170,7 +193,9 @@ CSS (with a `prefers-reduced-motion` fallback that keeps each expression).
 - [ ] Snooze once; button disappears; warns again before the new end
 - [ ] Break → tab activates, notification, celebration, break card + ideas
 - [ ] Switching tabs mid-break → one nudge, hint shows the reward is lost
-- [ ] Full break → gem/star toast and count; interrupted break → none
+- [ ] Full break → reward toast, item on the bookcase; interrupted → none
+- [ ] Bookcase persists through Stop and restarts; milestones add keepsakes
+- [ ] Typing “spoons” unlocks and switches to Otho; spoons go on the shelf
 - [ ] Round N → big break; big break → round 1
 - [ ] Pause/resume/skip/stop from the popup; popup stays live
 - [ ] Close the timer tab → it comes back pinned

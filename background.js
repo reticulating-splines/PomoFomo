@@ -59,6 +59,7 @@ async function handleInstalled(details) {
     // Add any new settings keys without overwriting user preferences
     const existing = await chrome.storage.sync.get(Object.keys(DEFAULT_SETTINGS));
     await chrome.storage.sync.set({ ...DEFAULT_SETTINGS, ...existing });
+    await seedShelfFromLogs();
   }
   await refreshActionUi();
   await ensureTimerTab({ activate: details.reason === 'install' });
@@ -250,11 +251,19 @@ async function finishBreak({ natural }) {
     interrupted: state.breakInterrupted,
   });
 
+  // A full break puts the current buddy's reward on the bookcase
+  const extra = { logs };
+  if (natural && !state.breakInterrupted) {
+    const settings = await getSettings();
+    extra.shelf = [...(Array.isArray(state.shelf) ? state.shelf : []),
+      { k: characterInfo(settings.timerCharacter).reward, t: Date.now() }];
+  }
+
   // After a long break the cycle restarts at session 1; otherwise advance.
   // The next focus session auto-starts — the child only ever clicks Start
   // once, at the very beginning.
   const next = state.status === STATUS.LONG_BREAK ? 1 : state.sessionNumber + 1;
-  await startFocus(next, { logs });
+  await startFocus(next, extra);
 }
 
 async function stopTimer() {
@@ -628,6 +637,16 @@ async function updateActionIcon(state) {
 }
 
 // ── Session log ───────────────────────────────────────────────────────────────
+
+/** v1 → v2: full breaks already in the log become the first books. */
+async function seedShelfFromLogs() {
+  const { shelf, logs } = await chrome.storage.local.get(['shelf', 'logs']);
+  if (Array.isArray(shelf)) return;
+  const seeded = (Array.isArray(logs) ? logs : [])
+    .filter(e => (e.type === 'shortBreak' || e.type === 'longBreak') && e.completedNaturally && !e.interrupted)
+    .map(e => ({ k: 'book', t: e.endedAt }));
+  await setState({ shelf: seeded });
+}
 
 function withLogEntry(logs, entry) {
   return [...(Array.isArray(logs) ? logs : []), { id: crypto.randomUUID(), ...entry }]

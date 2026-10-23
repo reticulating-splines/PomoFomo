@@ -7,13 +7,15 @@
   <link rel="stylesheet" href="../shared/tokens.css">
   <link rel="stylesheet" href="../characters/ember.css">
   <link rel="stylesheet" href="../characters/page.css">
+  <link rel="stylesheet" href="../characters/yumyumnia.css">
+  <link rel="stylesheet" href="../characters/otho.css">
   <link rel="stylesheet" href="timer.css">
   <!-- Redrawn every tick by favicon.js -->
   <link id="favicon" rel="icon" type="image/png" href="../assets/icons/icon32.png">
 </head>
 
-<!-- data-status / data-paused drive all theming; data-char picks reward art -->
-<body data-status="idle" data-paused="false" data-char="dragon" data-loading>
+<!-- data-status / data-paused drive all theming; data-char names the buddy -->
+<body data-status="idle" data-paused="false" data-char="ember" data-loading>
 
   <!-- ── Scenery: sky gradient (body), watercolour washes, sun, clouds, hills.
        Filters are applied to static shapes only; motion moves whole layers. -->
@@ -40,6 +42,17 @@
           <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="2" result="grain"/>
           <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.6 0 0 0 0.55" result="grainAlpha"/>
           <feComposite in="soft" in2="grainAlpha" operator="in"/>
+        </filter>
+        <!-- Painted wood: wobbly edge and a darker pooled rim, no granulation -->
+        <filter id="wc-wood" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.02 0.06" numOctaves="2" seed="12" result="warp"/>
+          <feDisplacementMap in="SourceGraphic" in2="warp" scale="6" xChannelSelector="R" yChannelSelector="G" result="shape"/>
+          <feTurbulence type="fractalNoise" baseFrequency="0.004 0.09" numOctaves="2" seed="21" result="grain"/>
+          <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.5 0 0 0 0.7" result="grainAlpha"/>
+          <feComposite in="shape" in2="grainAlpha" operator="in" result="textured"/>
+          <feMorphology in="shape" operator="erode" radius="2" result="inner"/>
+          <feComposite in="shape" in2="inner" operator="out" result="rim"/>
+          <feMerge><feMergeNode in="textured"/><feMergeNode in="rim"/></feMerge>
         </filter>
         <!-- Big, very soft sky washes -->
         <filter id="wc-sky" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
@@ -108,11 +121,12 @@
       <span class="rounds__label" id="roundLabel">Round 1 of 3</span>
     </div>
 
-    <div class="hoard" id="hoard">
-      <svg class="hoard__icon" aria-hidden="true"><use id="hoardIcon" href="../assets/sprite.svg#gem"/></svg>
+    <button class="hoard" id="hoard" aria-haspopup="dialog">
+      <svg class="hoard__icon" aria-hidden="true"><use href="../assets/sprite.svg#bookcase"/></svg>
       <span class="hoard__count" id="hoardCount">0</span>
-      <span class="hoard__label" id="hoardLabel">gems today</span>
-    </div>
+      <span class="hoard__label" id="hoardLabel">on your bookcase</span>
+      <span class="hoard__today" id="hoardToday" hidden></span>
+    </button>
   </header>
 
   <!-- ── Main stage ───────────────────────────────────────────────────────── -->
@@ -170,7 +184,7 @@
       </button>
 
       <p class="reward-hint" id="rewardHint">
-        <svg class="icon" aria-hidden="true"><use id="rewardHintIcon" href="../assets/sprite.svg#gem"/></svg>
+        <svg class="icon" aria-hidden="true"><use id="rewardHintIcon" href="../assets/sprite.svg#book"/></svg>
         <span id="rewardHintText"></span>
       </p>
     </aside>
@@ -183,9 +197,24 @@
 
   <!-- Reward toast at break → focus rollover -->
   <div class="toast" id="toast" role="status" aria-live="polite">
-    <svg class="toast__icon" aria-hidden="true"><use id="toastIcon" href="../assets/sprite.svg#gem"/></svg>
+    <svg class="toast__icon" aria-hidden="true"><use id="toastIcon" href="../assets/sprite.svg#book"/></svg>
     <span id="toastText"></span>
   </div>
+
+  <!-- Bookcase: every full break ever taken -->
+  <dialog class="shelf" id="shelf" aria-labelledby="shelfTitle">
+    <header class="shelf__head">
+      <div>
+        <h1 class="shelf__title" id="shelfTitle">Your bookcase</h1>
+        <p class="shelf__summary" id="shelfSummary"></p>
+      </div>
+      <button class="shelf__close" id="btnShelfClose" aria-label="Close bookcase">
+        <svg class="icon" aria-hidden="true"><use href="../assets/sprite.svg#close"/></svg>
+      </button>
+    </header>
+    <div class="shelf__case" id="shelfCase"></div>
+    <p class="shelf__foot" id="shelfFoot"></p>
+  </dialog>
 
   <!-- First-run welcome -->
   <dialog class="intro" id="intro" aria-labelledby="introTitle">
@@ -203,9 +232,9 @@
       </li>
       <li>
         <span class="intro__num intro__num--reward">
-          <svg class="icon" aria-hidden="true"><use id="introRewardIcon" href="../assets/sprite.svg#gem"/></svg>
+          <svg class="icon" aria-hidden="true"><use id="introRewardIcon" href="../assets/sprite.svg#book"/></svg>
         </span>
-        <span id="introRewardText"><strong>Stay away for the whole break</strong> to earn a gem!</span>
+        <span id="introRewardText"><strong>Stay away for the whole break</strong> to earn a book for your bookcase!</span>
       </li>
     </ol>
     <button class="btn btn--primary btn--l" id="btnIntro">Let’s go!</button>

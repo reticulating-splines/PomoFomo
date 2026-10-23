@@ -7,10 +7,10 @@
  * the timer tab's buttons get clicked, etc).
  */
 
-import { MSG, STATUS, DEFAULT_SETTINGS, characterInfo } from '../shared/constants.js';
+import { MSG, STATUS, DEFAULT_SETTINGS, UI_KEYS, REWARDS, characterInfo, rewardWord } from '../shared/constants.js';
 import { getState, getSettings, saveSettings } from '../shared/storage.js';
 import {
-  isRunning, isBreak, remainingMs, phaseProgress, formatClock, formatMinutes, weekStats, MINUTE,
+  isRunning, isBreak, remainingMs, phaseProgress, formatClock, formatMinutes, weekStats, shelfCounts, MINUTE,
 } from '../shared/timing.js';
 import { createCharacter } from '../characters/character.js';
 
@@ -26,8 +26,8 @@ const el = {
   btnPause: $('btnPause'), pauseIcon: $('pauseIcon'), pauseLabel: $('pauseLabel'),
   btnSkip: $('btnSkip'), skipLabel: $('skipLabel'), btnStop: $('btnStop'), btnOpen: $('btnOpen'),
   weekBars: $('weekBars'), statRounds: $('statRounds'), statMinutes: $('statMinutes'),
-  statBreaks: $('statBreaks'), statRewardIcon: $('statRewardIcon'),
-  cycleHint: $('cycleHint'),
+  statBreaks: $('statBreaks'), statRewardIcon: $('statRewardIcon'), weekShelf: $('weekShelf'),
+  cycleHint: $('cycleHint'), kidName: $('kidName'), buddyOtho: $('buddyOtho'), mark: document.querySelector('.bar__mark'),
 };
 const steppers = [...document.querySelectorAll('.stepper')];
 const switches = [...document.querySelectorAll('.switch input')];
@@ -42,18 +42,23 @@ let tickTimer = null;
 // ── Init ─────────────────────────────────────────────────────────────────────
 
 async function init() {
-  const [loaded, loadedSettings] = await Promise.all([getState(), getSettings()]);
+  const [loaded, loadedSettings, ui] = await Promise.all([
+    getState(), getSettings(), chrome.storage.local.get(UI_KEYS.OTHO_UNLOCKED),
+  ]);
   settings = loadedSettings;
+  el.buddyOtho.hidden = !ui[UI_KEYS.OTHO_UNLOCKED] && settings.timerCharacter !== 'otho';
   populateSettings();
   await renderFace();
   render(loaded);
   loadBuddyArt();
-  requestAnimationFrame(() => requestAnimationFrame(() => el.body.removeAttribute('data-loading')));
+  // A timer (not rAF) so a tab reopened in the background still settles
+  setTimeout(() => el.body.removeAttribute('data-loading'), 60);
 }
 
 init();
 
-chrome.storage.onChanged.addListener(async (_changes, area) => {
+chrome.storage.onChanged.addListener(async (changes, area) => {
+  if (area === 'local' && UI_KEYS.OTHO_UNLOCKED in changes) unlockOtho();
   if (area === 'local') {
     render(await getState());
   } else if (area === 'sync') {
@@ -166,6 +171,10 @@ function renderWeek() {
   el.statMinutes.textContent = formatMinutes(days.reduce((n, d) => n + d.minutes, 0));
   el.statBreaks.textContent = days.reduce((n, d) => n + d.breaks, 0);
   el.statRewardIcon.setAttribute('href', `${SPRITE}#${reward}`);
+
+  const counts = shelfCounts(state.shelf);
+  const parts = Object.keys(REWARDS).filter(k => counts[k]).map(k => `${counts[k]} ${rewardWord(k, counts[k])}`);
+  el.weekShelf.textContent = parts.length ? `On the bookcase so far: ${parts.join(', ')}` : '';
 }
 
 // ── Settings view ────────────────────────────────────────────────────────────
@@ -173,7 +182,8 @@ function renderWeek() {
 function populateSettings() {
   for (const s of steppers) renderStepper(s, settings[s.dataset.key]);
   for (const input of switches) input.checked = Boolean(settings[input.dataset.key]);
-  for (const input of buddyInputs) input.checked = input.value === (settings.timerCharacter === 'book' ? 'book' : 'dragon');
+  for (const input of buddyInputs) input.checked = input.value === characterInfoKey(settings.timerCharacter);
+  if (document.activeElement !== el.kidName) el.kidName.value = settings.kidName ?? '';
 
   const n = settings.sessionsBeforeLongBreak;
   el.cycleHint.textContent =
@@ -217,6 +227,31 @@ async function save(partial) {
   } catch (e) {
     console.error('[PomoFomo Popup] Settings save failed:', e);
   }
+}
+
+function characterInfoKey(key) {
+  return buddyInputs.some(i => i.value === key) ? key : 'dragon';
+}
+
+// Saved as they type (debounced): the popup can close before a change event
+let nameTimer = null;
+el.kidName.addEventListener('input', () => {
+  clearTimeout(nameTimer);
+  nameTimer = setTimeout(() => save({ kidName: el.kidName.value.trim().slice(0, 20) }), 350);
+});
+
+// Easter egg for grown-ups: click the logo five times to let Otho in
+let markClicks = 0;
+el.mark.addEventListener('click', () => {
+  if (++markClicks === 5) chrome.storage.local.set({ [UI_KEYS.OTHO_UNLOCKED]: true });
+});
+
+function unlockOtho() {
+  el.buddyOtho.hidden = false;
+  el.buddyOtho.animate(
+    [{ transform: 'scale(0.6)', opacity: 0 }, { transform: 'scale(1.06)', opacity: 1 }, { transform: 'none' }],
+    { duration: 600, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' },
+  );
 }
 
 async function loadBuddyArt() {

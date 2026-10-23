@@ -10,12 +10,16 @@
  * transitions, so no push messaging from the SW is needed.
  */
 
-import { STATUS, MSG, DEFAULT_SETTINGS, UI_KEYS, characterInfo } from '../shared/constants.js';
-import { getState, getSettings } from '../shared/storage.js';
 import {
-  isRunning, isBreak, remainingMs, phaseProgress, formatClock, isFullBreak, rewardsToday, MINUTE,
+  STATUS, MSG, DEFAULT_SETTINGS, UI_KEYS, VOICES, characterInfo, rewardWord, REWARDS,
+} from '../shared/constants.js';
+import { getState, getSettings, saveSettings } from '../shared/storage.js';
+import {
+  isRunning, isBreak, remainingMs, phaseProgress, formatClock, shelfToday, shelfCounts,
+  startOfToday, greeting, MINUTE,
 } from '../shared/timing.js';
 import { ideasFor } from '../shared/break-ideas.js';
+import { renderBookcase, milestoneAt, MILESTONES } from '../shared/bookcase.js';
 import { createCharacter } from '../characters/character.js';
 import { FaviconUpdater } from '../favicon/favicon.js';
 import { SoundPlayer } from '../sounds/sounds.js';
@@ -26,6 +30,7 @@ const RING_C = 2 * Math.PI * RING_R;
 const BREAK_DONE_MS = 1600; // break → focus celebration before the focus pose
 const SLEEPY_MS = 10_000;   // last seconds of the warning: the character nods off
 const TOAST_MS = 4200;
+const EASTER_EGG = 'spoons';
 
 const $ = id => document.getElementById(id);
 const el = {
@@ -33,7 +38,9 @@ const el = {
   arc: $('arc'), knob: $('knob'),
   time: $('time'), caption: $('caption'), bubble: $('bubble'),
   roundDots: $('roundDots'), roundLabel: $('roundLabel'),
-  hoard: $('hoard'), hoardIcon: $('hoardIcon'), hoardCount: $('hoardCount'), hoardLabel: $('hoardLabel'),
+  hoard: $('hoard'), hoardCount: $('hoardCount'), hoardLabel: $('hoardLabel'), hoardToday: $('hoardToday'),
+  shelf: $('shelf'), shelfTitle: $('shelfTitle'), shelfSummary: $('shelfSummary'), shelfCase: $('shelfCase'),
+  shelfFoot: $('shelfFoot'), btnShelfClose: $('btnShelfClose'),
   btnStart: $('btnStart'), btnSnooze: $('btnSnooze'), btnStop: $('btnStop'), actionsNote: $('actionsNote'),
   breakCard: $('breakCard'), breakTitle: $('breakTitle'), breakLede: $('breakLede'),
   idea: $('idea'), ideaArt: $('ideaArt'), ideaTitle: $('ideaTitle'), ideaText: $('ideaText'), btnIdea: $('btnIdea'),
@@ -69,7 +76,8 @@ async function init() {
   character = await createCharacter(settings.timerCharacter, el.characterContainer);
   applyCharacterText();
   render(loaded);
-  requestAnimationFrame(() => requestAnimationFrame(() => el.body.removeAttribute('data-loading')));
+  // A timer (not rAF) so a tab reopened in the background still settles
+  setTimeout(() => el.body.removeAttribute('data-loading'), 60);
 
   if (!ui[UI_KEYS.INTRO_SEEN] && loaded.status === STATUS.IDLE) showIntro();
 }
@@ -105,14 +113,15 @@ async function swapCharacter() {
 
 function applyCharacterText() {
   const info = characterInfo(settings.timerCharacter);
-  el.body.dataset.char = info.kind;
-  el.characterContainer.setAttribute('aria-label', `${info.name} the ${info.kind}`);
+  el.body.dataset.char = info.prefix;
+  el.characterContainer.setAttribute('aria-label', info.label);
   const icon = `${SPRITE}#${info.reward}`;
-  for (const use of [el.hoardIcon, el.rewardHintIcon, el.toastIcon, el.introRewardIcon]) {
+  for (const use of [el.rewardHintIcon, el.toastIcon, el.introRewardIcon]) {
     use.setAttribute('href', icon);
   }
   el.introTitle.textContent = `Hi! I’m ${info.name}.`;
-  el.introRewardText.innerHTML = `<strong>Stay away for the whole break</strong> to earn a ${info.reward}!`;
+  el.introRewardText.innerHTML =
+    `<strong>Stay away for the whole break</strong> to earn a ${rewardWord(info.reward, 1)} for your bookcase!`;
 }
 
 // ── Transition effects (chimes, celebrations, rewards) ───────────────────────
@@ -130,11 +139,11 @@ function onTransition(prev, next) {
   } else if (isBreak(next) && !wasBreak) {
     sounds.playChime('break');
   } else if (wasBreak && next.status === STATUS.FOCUS) {
-    celebrate(next);
+    celebrate(prev, next);
   }
 }
 
-function celebrate(next) {
+function celebrate(prev, next) {
   clearTimeout(celebrating);
   character?.setState('break-done');
   celebrating = setTimeout(() => {
@@ -142,20 +151,25 @@ function celebrate(next) {
     if (state) render(state);
   }, BREAK_DONE_MS);
 
-  const last = next.logs?.at(-1);
-  if (last && isFullBreak(last)) {
-    const { reward } = characterInfo(settings.timerCharacter);
+  const before = prev.shelf?.length ?? 0;
+  const after = next.shelf?.length ?? 0;
+  if (after > before) {
+    const { k } = next.shelf.at(-1);
     sounds.playChime('reward');
-    showToast(`+1 ${reward}! You took a full break.`);
+    const name = settings.kidName ? `Nice one, ${settings.kidName}! ` : '';
+    showToast(`${name}+1 ${rewardWord(k, 1)} for your bookcase!`, k);
     el.hoard.classList.remove('is-bumped');
     void el.hoard.offsetWidth; // restart the bump animation
     el.hoard.classList.add('is-bumped');
+    const milestone = milestoneAt(after);
+    if (milestone) setTimeout(() => showToast(milestone.note, k), TOAST_MS + 400);
   } else {
     sounds.playChime('ready');
   }
 }
 
-function showToast(text) {
+function showToast(text, icon) {
+  if (icon) el.toastIcon.setAttribute('href', `${SPRITE}#${icon}`);
   el.toastText.textContent = text;
   el.toast.classList.add('is-shown');
   clearTimeout(toastTimer);
@@ -177,6 +191,7 @@ function render(next) {
   renderControls();
   renderBreakCard();
   renderCharacter();
+  if (el.shelf.open) renderShelf();
 
   clearInterval(tickTimer);
   tick();
@@ -254,12 +269,44 @@ function renderRounds() {
 }
 
 function renderHoard() {
-  const { reward } = characterInfo(settings.timerCharacter);
-  const count = rewardsToday(state.logs);
-  el.hoardCount.textContent = count;
-  el.hoardLabel.textContent = `${reward}${count === 1 ? '' : 's'} today`;
-  el.hoard.title = `${count} full break${count === 1 ? '' : 's'} taken today`;
+  const total = state.shelf?.length ?? 0;
+  const today = shelfToday(state.shelf);
+  el.hoardCount.textContent = total;
+  el.hoardToday.hidden = today === 0;
+  el.hoardToday.textContent = `+${today} today`;
+  el.hoard.setAttribute('aria-label',
+    `Bookcase: ${total} thing${total === 1 ? '' : 's'}, ${today} added today. Open bookcase.`);
 }
+
+// ── Bookcase ─────────────────────────────────────────────────────────────────
+
+function renderShelf() {
+  const shelf = state.shelf ?? [];
+  el.shelfTitle.textContent = settings.kidName ? `${settings.kidName}’s bookcase` : 'Your bookcase';
+
+  const counts = shelfCounts(shelf);
+  const parts = Object.keys(REWARDS)
+    .filter(k => counts[k])
+    .map(k => `${counts[k]} ${rewardWord(k, counts[k])}`);
+  el.shelfSummary.textContent = parts.length ? parts.join(' · ') : 'Empty for now — but not for long!';
+
+  el.shelfCase.innerHTML = renderBookcase(shelf, { since: startOfToday(), paintFilter: 'wc-wood' });
+
+  const next = MILESTONES.find(m => m.at > shelf.length);
+  const { reward } = characterInfo(settings.timerCharacter);
+  el.shelfFoot.textContent = !shelf.length
+    ? `Take a full break to put your first ${rewardWord(reward, 1)} here.`
+    : next
+      ? `${next.at - shelf.length} more full break${next.at - shelf.length === 1 ? '' : 's'} until something special appears…`
+      : 'Every full break adds one more. How full can it get?';
+}
+
+el.hoard.addEventListener('click', () => {
+  renderShelf();
+  el.shelf.showModal();
+});
+el.btnShelfClose.addEventListener('click', () => el.shelf.close());
+el.shelf.addEventListener('click', e => { if (e.target === el.shelf) el.shelf.close(); });
 
 function renderControls() {
   const idle = state.status === STATUS.IDLE;
@@ -294,14 +341,19 @@ function renderBreakCard() {
   showIdea(false);
 
   const lost = state.breakInterrupted;
+  const word = rewardWord(reward, 1);
   el.rewardHint.classList.toggle('is-lost', lost);
   el.rewardHintText.textContent = lost
-    ? `No ${reward} this break — you went back to the screen. You can still finish your break!`
-    : `Stay away for the whole break to earn a ${reward}!`;
+    ? `No ${word} this break — you went back to the screen. You can still finish your break!`
+    : `Stay away for the whole break to earn a ${word} for your bookcase!`;
 }
 
 function showIdea(animate) {
-  const ideas = ideasFor({ isLong: state.status === STATUS.LONG_BREAK, seed: state.logs?.length ?? 0 });
+  const ideas = ideasFor({
+    isLong: state.status === STATUS.LONG_BREAK,
+    seed: state.logs?.length ?? 0,
+    buddy: settings.timerCharacter,
+  });
   const idea = ideas[ideaShift % ideas.length];
   el.ideaArt.setAttribute('href', `${SPRITE}#${idea.icon}`);
   el.ideaTitle.textContent = idea.title;
@@ -338,7 +390,9 @@ function caption() {
 }
 
 function bubbleText(left) {
-  if (celebrating) return 'Welcome back! Let’s do another round.';
+  const name = settings.kidName ? `, ${settings.kidName}` : '';
+  const voice = VOICES[settings.timerCharacter] ?? {};
+  if (celebrating) return voice.welcome ?? `Welcome back${name}! Let’s do another round.`;
   if (state.isPaused) return 'Taking a pause. We’ll pick up right where we left off.';
   const progress = phaseProgress(state);
   switch (state.status) {
@@ -357,10 +411,10 @@ function bubbleText(left) {
         return 'Welcome back! Your break isn’t over yet.';
       }
       return state.status === STATUS.LONG_BREAK
-        ? 'You did every round! Go play!'
-        : 'Break time! Get up and move with me!';
+        ? voice.longBreak ?? 'You did every round! Go play!'
+        : voice.break ?? 'Break time! Get up and move with me!';
     default:
-      return 'Ready when you are! I’ll tell you when it’s break time.';
+      return `${greeting()}${name}! Ready when you are.`;
   }
 }
 
@@ -388,6 +442,21 @@ async function showIntro() {
 }
 
 el.btnIntro.addEventListener('click', () => el.intro.close());
+
+// ── Easter egg: type "spoons" ────────────────────────────────────────────────
+// Otho Sackville-Baggins arrives to collect the spoons.
+
+let typed = '';
+document.addEventListener('keydown', async e => {
+  if (e.key.length !== 1 || el.intro.open) return;
+  typed = (typed + e.key.toLowerCase()).slice(-EASTER_EGG.length);
+  if (typed !== EASTER_EGG || settings.timerCharacter === 'otho') return;
+  typed = '';
+  await chrome.storage.local.set({ [UI_KEYS.OTHO_UNLOCKED]: true });
+  await saveSettings({ timerCharacter: 'otho' });
+  sounds.playChime('snooze');
+  showToast('Otho Sackville-Baggins has come for the spoons!', 'spoon');
+});
 
 // ── Sound unlock ─────────────────────────────────────────────────────────────
 // Web Audio needs a user gesture; Start is the natural one, but any click in

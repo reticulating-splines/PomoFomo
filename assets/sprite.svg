@@ -66,7 +66,61 @@
     <path d="M9.6 7.6 10.6 5.6" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".8"/>
   </symbol>
 
+  <symbol id="book" viewBox="0 0 24 24">
+    <path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v16.5H7.5A2.5 2.5 0 0 0 5 21z" fill="#E5507A"/>
+    <path d="M5 21a2.5 2.5 0 0 1 2.5-2.5H19V22H7.5A2.5 2.5 0 0 1 5 21z" fill="#FFF6E3"/>
+    <path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H9v16.5H7.5A2.5 2.5 0 0 0 5 21z" fill="#B8325F"/>
+    <path d="M11.5 6.5h5M11.5 9.5h3.5" stroke="#FFC93C" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M14 18.5V24l1.6-1.4 1.6 1.4v-5.5z" fill="#2FB5A5"/>
+  </symbol>
+  <symbol id="spoon" viewBox="0 0 24 24">
+    <ellipse cx="15.6" cy="7.4" rx="4.6" ry="5.8" transform="rotate(40 15.6 7.4)" fill="#B9C2D0"/>
+    <ellipse cx="15" cy="6.8" rx="2.4" ry="3.6" transform="rotate(40 15 6.8)" fill="#E6EBF2"/>
+    <path d="M12.4 11.6 4.2 19.8a1.6 1.6 0 0 0 2.3 2.3l8.2-8.2z" fill="#9AA5B6"/>
+    <circle cx="5.4" cy="21" r="1.1" fill="#E6EBF2"/>
+  </symbol>
+  <symbol id="fireball" viewBox="0 0 24 24">
+    <path d="M12 2.2c1 3 4.6 4.6 5.8 8.4 1.5 4.6-1.4 10.9-5.8 10.9S4.7 15.2 6.2 10.6C7 8.2 9 7.1 9.7 4.6c1 1.6 1.3 3.2.9 4.9C12.6 7.6 12.6 4.6 12 2.2z" fill="#FF6A2B"/>
+    <path d="M12 9.5c.6 2 3 3 3.3 5.6.4 3-1.3 5.4-3.3 5.4s-3.7-2.4-3.3-5.4c.2-1.6 1.4-2.4 1.8-3.8.7.8.9 1.7.7 2.6 1.2-1 1.4-2.6.8-4.4z" fill="#FFC93C"/>
+    <ellipse cx="12" cy="17.8" rx="1.6" ry="2.2" fill="#FFF3C4"/>
+  </symbol>
+  <symbol id="bookcase" viewBox="0 0 24 24">
+    <rect x="3" y="2" width="18" height="20" rx="2.5" fill="#B9875A"/>
+    <rect x="5" y="4" width="14" height="7" rx="1" fill="#F3E1C7"/>
+    <rect x="5" y="13" width="14" height="7" rx="1" fill="#F3E1C7"/>
+    <rect x="6" y="5.5" width="2.2" height="5.5" rx=".5" fill="#E5507A"/>
+    <rect x="8.6" y="6.5" width="2" height="4.5" rx=".5" fill="#6C6FF5"/>
+    <rect x="11" y="5" width="2.4" height="6" rx=".5" fill="#1FAE79"/>
+    <rect x="13.9" y="6" width="2" height="5" rx=".5" fill="#F29A1F" transform="rotate(12 14.9 11)"/>
+    <rect x="6" y="14.5" width="2.4" height="5.5" rx=".5" fill="#36B9E8"/>
+    <rect x="8.8" y="15.5" width="2" height="4.5" rx=".5" fill="#FFC93C"/>
+  </symbol>
+  <symbol id="close" viewBox="0 0 24 24">
+    <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+  </symbol>
+
   <!-- ── Break ideas (64×64 illustrations) ──────────────────────────────── -->
+  <symbol id="idea-dragon" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="30" fill="#FFE6E1"/>
+    <path d="M14 34c6-8 16-8 22-2" fill="none" stroke="#FF6F5B" stroke-width="5" stroke-linecap="round"/>
+    <path d="M36 32c4-2 8-2 12 1M38 38c4 1 8 3 10 6M37 26c3-3 7-5 11-5" fill="none" stroke="#FFB15C" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="20" cy="27" r="2.6" fill="#2A2342"/>
+  </symbol>
+  <symbol id="idea-read" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="30" fill="#FFE9F1"/>
+    <use href="#book" x="15" y="14" width="34" height="34"/>
+  </symbol>
+  <symbol id="idea-spell" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="30" fill="#FFEBD9"/>
+    <use href="#fireball" x="16" y="12" width="32" height="36"/>
+    <path d="M12 20l1.4 3 3 1.4-3 1.4-1.4 3-1.4-3-3-1.4 3-1.4zM52 38l1 2.2 2.2 1-2.2 1-1 2.2-1-2.2-2.2-1 2.2-1z" fill="#7FD3F7"/>
+  </symbol>
+  <symbol id="idea-spoons" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="30" fill="#EEF0F4"/>
+    <use href="#spoon" x="12" y="14" width="30" height="30"/>
+    <use href="#spoon" x="24" y="20" width="28" height="28"/>
+  </symbol>
+
   <symbol id="idea-stretch" viewBox="0 0 64 64">
     <circle cx="32" cy="32" r="30" fill="#EEEFFF"/>
     <g stroke="#6C6FF5" stroke-linecap="round" stroke-linejoin="round" fill="none">

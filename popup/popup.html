@@ -6,6 +6,8 @@
   <link rel="stylesheet" href="../shared/tokens.css">
   <link rel="stylesheet" href="../characters/ember.css">
   <link rel="stylesheet" href="../characters/page.css">
+  <link rel="stylesheet" href="../characters/yumyumnia.css">
+  <link rel="stylesheet" href="../characters/otho.css">
   <link rel="stylesheet" href="popup.css">
 </head>
 
@@ -81,9 +83,10 @@
           <div><dt>Focus time</dt><dd id="statMinutes">0 min</dd></div>
           <div>
             <dt id="statRewardLabel">Full breaks</dt>
-            <dd><svg class="icon" aria-hidden="true"><use id="statRewardIcon" href="../assets/sprite.svg#gem"/></svg> <span id="statBreaks">0</span></dd>
+            <dd><svg class="icon" aria-hidden="true"><use id="statRewardIcon" href="../assets/sprite.svg#book"/></svg> <span id="statBreaks">0</span></dd>
           </div>
         </dl>
+        <p class="week__shelf" id="weekShelf"></p>
       </div>
     </section>
 
@@ -133,13 +136,36 @@
           <input type="radio" name="timerCharacter" value="dragon">
           <span class="buddy__art" data-char="dragon" aria-hidden="true"></span>
           <span class="buddy__name">Ember</span>
-          <span class="buddy__kind">the dragon</span>
+          <span class="buddy__kind">the dragon · books</span>
         </label>
         <label class="buddy">
           <input type="radio" name="timerCharacter" value="book">
           <span class="buddy__art" data-char="book" aria-hidden="true"></span>
           <span class="buddy__name">Page</span>
-          <span class="buddy__kind">the book</span>
+          <span class="buddy__kind">the book · books</span>
+        </label>
+        <label class="buddy">
+          <input type="radio" name="timerCharacter" value="wizard">
+          <span class="buddy__art" data-char="wizard" aria-hidden="true"></span>
+          <span class="buddy__name">Yumyumnia</span>
+          <span class="buddy__kind">elf wizard · fireballs</span>
+          <span class="buddy__credit">Designed by a real 8-year-old</span>
+        </label>
+        <label class="buddy" id="buddyOtho" hidden>
+          <input type="radio" name="timerCharacter" value="otho">
+          <span class="buddy__art" data-char="otho" aria-hidden="true"></span>
+          <span class="buddy__name">Otho</span>
+          <span class="buddy__kind">Sackville-Baggins · spoons</span>
+        </label>
+      </div>
+
+      <div class="group group--spaced">
+        <label class="field">
+          <span class="field__text">
+            <span class="switch__label">Your kid’s name</span>
+            <span class="switch__hint">Optional. The buddy uses it to say hi.</span>
+          </span>
+          <input class="field__input" id="kidName" type="text" maxlength="20" autocomplete="off" spellcheck="false" placeholder="e.g. Sam">
         </label>
       </div>
 

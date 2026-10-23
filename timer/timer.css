@@ -273,6 +273,17 @@ body[data-status="longBreak"] .scene__sparkles i {
   text-align: center;
 }
 .hoard__label { font-weight: 700; font-size: 0.86rem; color: var(--ink-soft); }
+.hoard { transition: transform 160ms var(--ease-out), background 200ms ease; }
+.hoard:hover { transform: translateY(-1px); background: rgba(255, 255, 255, 0.85); }
+.hoard__today {
+  margin-left: 2px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-weight: 800;
+  font-size: 0.78rem;
+  color: white;
+  background: var(--break);
+}
 .hoard.is-bumped .hoard__icon { animation: bump 700ms var(--ease-spring); }
 @keyframes bump {
   0% { transform: scale(1); }
@@ -556,6 +567,62 @@ body[data-phase="break"] .bubble {
 .toast__icon { width: 30px; height: 30px; }
 .toast.is-shown .toast__icon { animation: bump 800ms 200ms var(--ease-spring); }
 
+/* ── Bookcase dialog ───────────────────────────────────────────────────────── */
+
+.shelf {
+  margin: auto;
+  width: min(720px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  padding: 22px 24px 18px;
+  border: 0;
+  border-radius: var(--radius-xl);
+  background: #FFFCF7;
+  color: var(--ink);
+  box-shadow: var(--shadow-l);
+  overflow: hidden;
+  display: none;
+}
+.shelf[open] { display: flex; flex-direction: column; animation: card-pop 500ms var(--ease-spring) both; }
+.shelf::backdrop { background: rgba(42, 35, 66, 0.32); backdrop-filter: blur(4px); }
+.shelf__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.shelf__title { font-family: var(--font-display); font-weight: 600; font-size: 1.8rem; line-height: 1.1; }
+.shelf__summary { margin-top: 4px; font-weight: 700; font-size: 1rem; color: var(--ink-soft); }
+.shelf__close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  font-size: 18px;
+  color: var(--ink-soft);
+  background: #F3EFE8;
+}
+.shelf__close:hover { color: var(--ink); background: #ECE6DC; }
+.shelf__case {
+  margin-top: 16px;
+  overflow-y: auto;
+  border-radius: 16px;
+  min-height: 0;
+}
+.shelf__case .bookcase { display: block; width: 100%; height: auto; }
+.shelf__foot {
+  margin-top: 12px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
+.bookcase .bk-newest { animation: bk-drop 900ms 250ms var(--ease-spring) both; }
+@keyframes bk-drop {
+  from { transform: translateY(-60px); opacity: 0; }
+  60%  { opacity: 1; }
+  to   { transform: none; opacity: 1; }
+}
+.bookcase .bk-sparkle { animation: twinkle 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.bookcase .bk-flame { animation: bk-flicker 1.6s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes bk-flicker { from { transform: scale(1, 1); } to { transform: scale(0.94, 1.06); } }
+
 /* ── Intro dialog ─────────────────────────────────────────────────────────── */
 
 .intro {
@@ -678,5 +745,6 @@ body[data-phase="break"] .bubble {
 
 @media (prefers-reduced-motion: reduce) {
   .cloud, .scene__sparkles i { animation: none !important; }
-  .bubble, .break-card, .idea.is-new, #btnStart, #btnSnooze, .intro[open] { animation: none !important; }
+  .bubble, .break-card, .idea.is-new, #btnStart, #btnSnooze, .intro[open], .shelf[open] { animation: none !important; }
+  .bookcase * { animation: none !important; }
 }
