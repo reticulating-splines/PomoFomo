@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "PomoFomo",
-  "version": "1.2.0",
-  "description": "A friendly Pomodoro timer for kids. Take breaks, recharge, go again!",
+  "version": "2.0.0",
+  "description": "A friendly break buddy for kids. Focus, take a real break, earn a gem, go again!",
   "minimum_chrome_version": "120",
 
   "permissions": ["alarms", "storage", "tabs", "notifications"],

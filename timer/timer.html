@@ -33,7 +33,7 @@
           <feMerge><feMergeNode in="textured"/><feMergeNode in="rimSoft"/></feMerge>
         </filter>
         <!-- Soft bloom for sky washes and clouds -->
-        <filter id="wc-bloom" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+        <filter id="wc-bloom" x="-40%" y="-80%" width="180%" height="260%" color-interpolation-filters="sRGB">
           <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="7" result="warp"/>
           <feDisplacementMap in="SourceGraphic" in2="warp" scale="30" xChannelSelector="R" yChannelSelector="G" result="shape"/>
           <feGaussianBlur in="shape" stdDeviation="4" result="soft"/>
@@ -66,7 +66,7 @@
 
     <div class="scene__sun">
       <div class="scene__sun-glow"></div>
-      <svg class="scene__sun-disc" viewBox="0 0 200 200"><circle cx="100" cy="100" r="62" filter="url(#wc-bloom)"/></svg>
+      <div class="scene__sun-disc"></div>
     </div>
 
     <svg class="scene__clouds" viewBox="0 0 1440 400" preserveAspectRatio="xMidYMin slice">
@@ -74,7 +74,7 @@
         <ellipse cx="220" cy="120" rx="90" ry="34"/><ellipse cx="270" cy="96" rx="56" ry="40"/><ellipse cx="190" cy="104" rx="44" ry="30"/>
       </g>
       <g class="cloud cloud--2" filter="url(#wc-bloom)">
-        <ellipse cx="1120" cy="80" rx="110" ry="36"/><ellipse cx="1080" cy="58" rx="60" ry="40"/><ellipse cx="1160" cy="62" rx="48" ry="32"/>
+        <ellipse cx="1000" cy="80" rx="110" ry="36"/><ellipse cx="960" cy="58" rx="60" ry="40"/><ellipse cx="1040" cy="62" rx="48" ry="32"/>
       </g>
       <g class="cloud cloud--3" filter="url(#wc-bloom)">
         <ellipse cx="760" cy="200" rx="70" ry="22"/><ellipse cx="790" cy="184" rx="40" ry="26"/>

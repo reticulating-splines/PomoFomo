@@ -272,7 +272,6 @@ function renderControls() {
   el.actionsNote.textContent =
     idle ? `${settings.focusMinutes} min focus, then a ${settings.shortBreakMinutes} min break`
     : canSnooze ? 'You can do this once each round.'
-    : state.isPaused ? 'The timer is paused.'
     : '';
 }
 
@@ -361,7 +360,7 @@ function bubbleText(left) {
         ? 'You did every round! Go play!'
         : 'Break time! Get up and move with me!';
     default:
-      return 'Ready when you are! Press Start and I’ll call you when it’s break time.';
+      return 'Ready when you are! I’ll tell you when it’s break time.';
   }
 }
 
