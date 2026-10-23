@@ -4,69 +4,212 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PomoFomo</title>
+  <link rel="stylesheet" href="../shared/tokens.css">
+  <link rel="stylesheet" href="../characters/ember.css">
+  <link rel="stylesheet" href="../characters/page.css">
   <link rel="stylesheet" href="timer.css">
-  <!-- Favicon is redrawn every tick by favicon.js -->
+  <!-- Redrawn every tick by favicon.js -->
   <link id="favicon" rel="icon" type="image/png" href="../assets/icons/icon32.png">
 </head>
 
-<!-- data-status drives all CSS theming; data-paused adds the paused treatment -->
-<body data-status="idle" data-paused="false">
+<!-- data-status / data-paused drive all theming; data-char picks reward art -->
+<body data-status="idle" data-paused="false" data-char="dragon" data-loading>
 
-  <div class="app-shell">
+  <!-- ── Scenery: sky gradient (body), watercolour washes, sun, clouds, hills.
+       Filters are applied to static shapes only; motion moves whole layers. -->
+  <div class="scene" aria-hidden="true">
+    <svg class="scene__defs" width="0" height="0" focusable="false">
+      <defs>
+        <!-- Wobbly painted edge + pigment granulation + darker pooled rim -->
+        <filter id="wc-paint" x="-10%" y="-30%" width="120%" height="160%" color-interpolation-filters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.011 0.028" numOctaves="3" seed="4" result="warp"/>
+          <feDisplacementMap in="SourceGraphic" in2="warp" scale="16" xChannelSelector="R" yChannelSelector="G" result="shape"/>
+          <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="3" seed="11" result="grain"/>
+          <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.75 0 0 0 0.42" result="grainAlpha"/>
+          <feComposite in="shape" in2="grainAlpha" operator="in" result="textured"/>
+          <feMorphology in="shape" operator="erode" radius="2.5" result="inner"/>
+          <feComposite in="shape" in2="inner" operator="out" result="rim"/>
+          <feGaussianBlur in="rim" stdDeviation="1.1" result="rimSoft"/>
+          <feMerge><feMergeNode in="textured"/><feMergeNode in="rimSoft"/></feMerge>
+        </filter>
+        <!-- Soft bloom for sky washes and clouds -->
+        <filter id="wc-bloom" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="7" result="warp"/>
+          <feDisplacementMap in="SourceGraphic" in2="warp" scale="30" xChannelSelector="R" yChannelSelector="G" result="shape"/>
+          <feGaussianBlur in="shape" stdDeviation="4" result="soft"/>
+          <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="2" result="grain"/>
+          <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.6 0 0 0 0.55" result="grainAlpha"/>
+          <feComposite in="soft" in2="grainAlpha" operator="in"/>
+        </filter>
+        <!-- Big, very soft sky washes -->
+        <filter id="wc-sky" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.008" numOctaves="2" seed="5" result="warp"/>
+          <feDisplacementMap in="SourceGraphic" in2="warp" scale="70" xChannelSelector="R" yChannelSelector="G" result="shape"/>
+          <feGaussianBlur in="shape" stdDeviation="22" result="soft"/>
+          <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="8" result="grain"/>
+          <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.7 0 0 0 0.45" result="grainAlpha"/>
+          <feComposite in="soft" in2="grainAlpha" operator="in"/>
+        </filter>
+        <!-- Paper grain, multiplied over everything -->
+        <filter id="wc-paper" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" seed="3" stitchTiles="stitch"/>
+          <feColorMatrix type="matrix" values="0 0 0 0 0.42  0 0 0 0 0.36  0 0 0 0 0.30  -0.9 0 0 0 0.62"/>
+        </filter>
+      </defs>
+    </svg>
 
-    <!-- Session indicator: ●●○ dots + label -->
-    <div class="session-track">
-      <div class="session-dots" id="sessionDots" role="img" aria-label="Session progress"></div>
-      <span class="session-label" id="sessionLabel">Session 1</span>
+    <svg class="scene__washes" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+      <ellipse class="wash wash--a" cx="260"  cy="210" rx="360" ry="190" filter="url(#wc-sky)"/>
+      <ellipse class="wash wash--b" cx="1180" cy="320" rx="420" ry="220" filter="url(#wc-sky)"/>
+      <ellipse class="wash wash--c" cx="760"  cy="80"  rx="300" ry="120" filter="url(#wc-sky)"/>
+    </svg>
+
+    <div class="scene__sun">
+      <div class="scene__sun-glow"></div>
+      <svg class="scene__sun-disc" viewBox="0 0 200 200"><circle cx="100" cy="100" r="62" filter="url(#wc-bloom)"/></svg>
     </div>
 
-    <!-- Central stage: progress ring + character -->
-    <div class="timer-stage" aria-hidden="true">
-      <svg class="progress-ring" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
-        <circle class="ring-track" cx="110" cy="110" r="96"
-                fill="none" stroke-width="8" />
-        <!-- stroke-dashoffset animated by timer.js -->
-        <circle class="ring-arc" id="progressArc" cx="110" cy="110" r="96"
-                fill="none" stroke-width="8" stroke-linecap="round"
-                transform="rotate(-90 110 110)" />
-      </svg>
+    <svg class="scene__clouds" viewBox="0 0 1440 400" preserveAspectRatio="xMidYMin slice">
+      <g class="cloud cloud--1" filter="url(#wc-bloom)">
+        <ellipse cx="220" cy="120" rx="90" ry="34"/><ellipse cx="270" cy="96" rx="56" ry="40"/><ellipse cx="190" cy="104" rx="44" ry="30"/>
+      </g>
+      <g class="cloud cloud--2" filter="url(#wc-bloom)">
+        <ellipse cx="1120" cy="80" rx="110" ry="36"/><ellipse cx="1080" cy="58" rx="60" ry="40"/><ellipse cx="1160" cy="62" rx="48" ry="32"/>
+      </g>
+      <g class="cloud cloud--3" filter="url(#wc-bloom)">
+        <ellipse cx="760" cy="200" rx="70" ry="22"/><ellipse cx="790" cy="184" rx="40" ry="26"/>
+      </g>
+    </svg>
 
-      <!-- Dragon or book SVG injected here by character.js -->
-      <div class="character-container" id="characterContainer"></div>
+    <div class="scene__sparkles">
+      <i></i><i></i><i></i><i></i><i></i><i></i>
     </div>
 
-    <!-- Time remaining.
-         aria-live is intentionally NOT here (it changes every second) —
-         screen reader announcements happen on statusLabel only. -->
-    <div class="time-display" id="timeDisplay">20:00</div>
+    <svg class="scene__hills" viewBox="0 0 1440 260" preserveAspectRatio="xMidYMax slice">
+      <path class="hill hill--back"  filter="url(#wc-paint)" d="M-40 130C150 76 330 66 520 98s330 70 520 30 300-60 440-36V300H-40z"/>
+      <path class="hill hill--mid"   filter="url(#wc-paint)" d="M-40 172c210-54 400-62 640-22s420 46 600 6c120-26 200-30 280-24V300H-40z"/>
+      <path class="hill hill--front" filter="url(#wc-paint)" d="M-40 212c250-32 500-36 760-12s480 26 760-6V300H-40z"/>
+    </svg>
 
-    <p class="status-label" id="statusLabel" aria-live="polite" aria-atomic="true">
-      Ready to focus?
-    </p>
+    <svg class="scene__paper" width="100%" height="100%" preserveAspectRatio="none">
+      <rect width="100%" height="100%" filter="url(#wc-paper)"/>
+    </svg>
+  </div>
 
-    <div class="controls">
-      <!-- Start: shown while idle. Also unlocks the AudioContext (user gesture). -->
-      <button class="btn btn-primary" id="btnStart">Start</button>
+  <!-- ── Top bar ──────────────────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand__mark" src="../assets/icons/icon.svg" alt="" width="28" height="28">
+      <span class="brand__name">PomoFomo</span>
+    </div>
 
-      <!-- Snooze: shown during focus-warning, once per session -->
-      <button class="btn btn-snooze" id="btnSnooze" hidden
-              aria-label="Snooze for 5 more minutes">
-        5 more minutes?
+    <div class="rounds" id="rounds">
+      <ol class="rounds__dots" id="roundDots" aria-hidden="true"></ol>
+      <span class="rounds__label" id="roundLabel">Round 1 of 3</span>
+    </div>
+
+    <div class="hoard" id="hoard">
+      <svg class="hoard__icon" aria-hidden="true"><use id="hoardIcon" href="../assets/sprite.svg#gem"/></svg>
+      <span class="hoard__count" id="hoardCount">0</span>
+      <span class="hoard__label" id="hoardLabel">gems today</span>
+    </div>
+  </header>
+
+  <!-- ── Main stage ───────────────────────────────────────────────────────── -->
+  <main class="stage">
+
+    <section class="hero" aria-labelledby="time">
+      <div class="dial-wrap">
+        <div class="dial">
+          <svg class="dial__ring" viewBox="0 0 300 300" aria-hidden="true">
+            <circle class="dial__wash" cx="150" cy="150" r="112" filter="url(#wc-bloom)"/>
+            <circle class="dial__track" cx="150" cy="150" r="136"/>
+            <circle class="dial__arc" id="arc" cx="150" cy="150" r="136" transform="rotate(-90 150 150)"/>
+            <circle class="dial__knob" id="knob" cx="150" cy="14" r="9"/>
+          </svg>
+          <div class="dial__char" id="characterContainer" role="img" aria-label="Ember the dragon"></div>
+          <div class="dial__paused" aria-hidden="true">
+            <svg class="icon"><use href="../assets/sprite.svg#pause"/></svg>
+          </div>
+        </div>
+        <p class="bubble" id="bubble" aria-live="polite"></p>
+      </div>
+
+      <div class="readout">
+        <div class="readout__time" id="time" role="timer" aria-live="off">20:00</div>
+        <div class="readout__caption" id="caption">minutes of focus</div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn--primary btn--xl" id="btnStart" hidden>
+          <svg class="icon" aria-hidden="true"><use href="../assets/sprite.svg#play"/></svg>
+          Start focusing
+        </button>
+        <button class="btn btn--soft btn--l btn--warn" id="btnSnooze" hidden>
+          5 more minutes, please
+        </button>
+        <p class="actions__note" id="actionsNote"></p>
+      </div>
+    </section>
+
+    <aside class="break-card" id="breakCard" aria-labelledby="breakTitle" hidden>
+      <h1 class="break-card__title" id="breakTitle">Break time!</h1>
+      <p class="break-card__lede" id="breakLede">Step away from the screen. Here’s an idea:</p>
+
+      <div class="idea" id="idea">
+        <svg class="idea__art" aria-hidden="true"><use id="ideaArt" href="../assets/sprite.svg#idea-stretch"/></svg>
+        <div class="idea__words">
+          <h2 class="idea__title" id="ideaTitle"></h2>
+          <p class="idea__text" id="ideaText"></p>
+        </div>
+      </div>
+
+      <button class="btn btn--quiet idea__next" id="btnIdea">
+        <svg class="icon" aria-hidden="true"><use href="../assets/sprite.svg#shuffle"/></svg>
+        Another idea
       </button>
 
-      <!-- Deliberately low-key stop — an escape hatch, not a temptation -->
-      <button class="btn-stop-link" id="btnStopLink" hidden>stop the timer</button>
-    </div>
+      <p class="reward-hint" id="rewardHint">
+        <svg class="icon" aria-hidden="true"><use id="rewardHintIcon" href="../assets/sprite.svg#gem"/></svg>
+        <span id="rewardHintText"></span>
+      </p>
+    </aside>
 
+  </main>
+
+  <footer class="footer">
+    <button class="btn btn--quiet" id="btnStop" hidden>Stop timer</button>
+  </footer>
+
+  <!-- Reward toast at break → focus rollover -->
+  <div class="toast" id="toast" role="status" aria-live="polite">
+    <svg class="toast__icon" aria-hidden="true"><use id="toastIcon" href="../assets/sprite.svg#gem"/></svg>
+    <span id="toastText"></span>
   </div>
 
-  <!-- Break banner — pinned to the top during breaks -->
-  <div class="break-banner" id="breakBanner" hidden>
-    <div class="break-banner__inner">
-      <h1 class="break-banner__title" id="breakBannerTitle">Break time!</h1>
-      <p class="break-banner__subtitle" id="breakBannerSubtitle"></p>
-    </div>
-  </div>
+  <!-- First-run welcome -->
+  <dialog class="intro" id="intro" aria-labelledby="introTitle">
+    <div class="intro__char" id="introChar" aria-hidden="true"></div>
+    <h1 class="intro__title" id="introTitle">Hi! I’m Ember.</h1>
+    <p class="intro__lede">I’ll help you remember to take breaks.</p>
+    <ol class="intro__steps">
+      <li>
+        <span class="intro__num">1</span>
+        <span><strong>Press Start</strong> and do your thing — games, homework, videos.</span>
+      </li>
+      <li>
+        <span class="intro__num">2</span>
+        <span><strong>When I call, take a break.</strong> Get up, move around, rest your eyes.</span>
+      </li>
+      <li>
+        <span class="intro__num intro__num--reward">
+          <svg class="icon" aria-hidden="true"><use id="introRewardIcon" href="../assets/sprite.svg#gem"/></svg>
+        </span>
+        <span id="introRewardText"><strong>Stay away for the whole break</strong> to earn a gem!</span>
+      </li>
+    </ol>
+    <button class="btn btn--primary btn--l" id="btnIntro">Let’s go!</button>
+  </dialog>
 
   <script type="module" src="timer.js"></script>
 </body>

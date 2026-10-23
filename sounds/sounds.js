@@ -42,7 +42,7 @@ export class SoundPlayer {
 
   // ── Chimes ─────────────────────────────────────────────────────────────────
 
-  /** @param {'warning'|'break'|'snooze'} variant */
+  /** @param {'warning'|'break'|'snooze'|'ready'|'reward'} variant */
   playChime(variant = 'warning') {
     if (!this.#ready) return;
     const ctx = this.#getCtx();
@@ -60,6 +60,19 @@ export class SoundPlayer {
         // Gentle rising A4 → B4: "okay, a little longer"
         this.#tone(ctx, { freq: 440, startAt: now, volume: 0.10, attack: 0.04, decay: 0.6 });
         this.#tone(ctx, { freq: 494, startAt: now + 0.25, volume: 0.08, attack: 0.04, decay: 0.5 });
+        break;
+
+      case 'ready':
+        // Break over: two warm rising notes, D5 → G5 — "let's go again"
+        this.#tone(ctx, { freq: 587, startAt: now, volume: 0.11, attack: 0.03, decay: 0.5 });
+        this.#tone(ctx, { freq: 784, startAt: now + 0.18, volume: 0.11, attack: 0.03, decay: 0.8 });
+        break;
+
+      case 'reward':
+        // Full break earned a gem/star: quick sparkly run G5–C6–E6–G6
+        [784, 1047, 1319, 1568].forEach((freq, i) =>
+          this.#tone(ctx, { freq, startAt: now + i * 0.08, volume: 0.09 - i * 0.012, attack: 0.01, decay: 0.55 }));
+        this.#tone(ctx, { freq: 2093, startAt: now + 0.34, volume: 0.035, attack: 0.01, decay: 1.1, type: 'triangle' });
         break;
 
       default:

@@ -1,0 +1,156 @@
+<svg class="char ember" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <!-- Ember the dragon. Flat shapes, one shadow tone + one highlight.
+       Animatable parts carry ember__* classes; all motion is in ember.css.
+       Elements animated by CSS never carry a transform attribute. -->
+  <defs>
+    <clipPath id="ember-head-clip"><ellipse cx="100" cy="82" rx="47" ry="42"/></clipPath>
+    <clipPath id="ember-body-clip"><ellipse cx="100" cy="146" rx="37" ry="31"/></clipPath>
+    <clipPath id="ember-belly-clip"><ellipse cx="100" cy="151" rx="22" ry="21"/></clipPath>
+  </defs>
+
+  <ellipse class="ember__shadow" cx="100" cy="181" rx="44" ry="6.5" fill="rgba(42,35,66,0.10)"/>
+
+  <g class="ember__root">
+
+    <!-- Tail: curls out to the right, cream spade tip -->
+    <g class="ember__tail">
+      <path d="M118 158 C134 172 158 170 166 152 C170 143 168 136 162 133 C160 144 154 152 142 155 C134 157 126 155 122 150 Z" fill="#E85540"/>
+      <path d="M162 136 C156 128 156 118 165 110 C172 117 175 126 170 135 C167 137 164 137 162 136 Z" fill="#FFF1D6"/>
+      <path d="M165 110 C172 117 175 126 170 135 C169 126 167 118 165 110 Z" fill="#F3DDB8"/>
+    </g>
+
+    <!-- Wings: behind the body, membrane + bone -->
+    <g class="ember__wing-l">
+      <path d="M 81 142 C 71 126 57 111 40 99 C 38 107 40 113 44 116 Q 50 116 54 121 Q 60 122 63 129 Q 70 131 75 144 Z" fill="#FFA493"/>
+      <path d="M 55 112 L 53 120 M 64 121 L 63 128" fill="none" stroke="#F07B66" stroke-width="2" stroke-linecap="round"/>
+      <path d="M 79 139 C 70 126 57 111 40 99" fill="none" stroke="#E85540" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <g class="ember__wing-r">
+      <path d="M 119 142 C 129 126 143 111 160 99 C 162 107 160 113 156 116 Q 150 116 146 121 Q 140 122 137 129 Q 130 131 125 144 Z" fill="#FFA493"/>
+      <path d="M 145 112 L 147 120 M 136 121 L 137 128" fill="none" stroke="#F07B66" stroke-width="2" stroke-linecap="round"/>
+      <path d="M 121 139 C 130 126 143 111 160 99" fill="none" stroke="#E85540" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <!-- Body + belly plates -->
+    <g class="ember__body">
+      <ellipse cx="100" cy="146" rx="37" ry="31" fill="#E85540"/>
+      <ellipse cx="95" cy="142" rx="36" ry="30" fill="#FF6F5B" clip-path="url(#ember-body-clip)"/>
+      <path d="M66 136 C70 126 82 120 92 121 C86 128 80 138 74 146 C70 148 66 144 66 136 Z" fill="#FF8472" opacity="0.5"/>
+      <path d="M136 150 C132 166 118 176 100 177" fill="none" stroke="#C9412E" stroke-width="1.8" stroke-linecap="round" opacity="0.28"/>
+      <ellipse cx="100" cy="151" rx="22" ry="21" fill="#F5C266"/>
+      <ellipse cx="97" cy="148.5" rx="21.5" ry="20.5" fill="#FFD98A" clip-path="url(#ember-belly-clip)"/>
+      <ellipse cx="91" cy="141" rx="10" ry="6" fill="#FFFFFF" opacity="0.32" transform="rotate(-18 91 141)"/>
+      <path d="M84 141 Q99 145.5 117 141 M80 152 Q99 157 120 152 M84 163 Q100 167 116 163" fill="none" stroke="#F5C266" stroke-width="2.2" stroke-linecap="round"/>
+    </g>
+
+    <!-- Feet -->
+    <g class="ember__feet">
+      <ellipse cx="80" cy="173" rx="13" ry="7.5" fill="#E85540"/>
+      <ellipse cx="120" cy="173" rx="13" ry="7.5" fill="#E85540"/>
+      <circle cx="73.5" cy="177" r="2.3" fill="#FFF1D6"/><circle cx="80" cy="178.6" r="2.3" fill="#FFF1D6"/><circle cx="86.5" cy="177" r="2.3" fill="#FFF1D6"/>
+      <circle cx="113.5" cy="177" r="2.3" fill="#FFF1D6"/><circle cx="120" cy="178.6" r="2.3" fill="#FFF1D6"/><circle cx="126.5" cy="177" r="2.3" fill="#FFF1D6"/>
+    </g>
+
+    <!-- Head: frills, horns, crest, face -->
+    <g class="ember__head">
+      <path d="M62 72 Q42 62 34 74 Q44 77 43 85 Q51 83 58 90 Z" fill="#FFA493"/>
+      <path d="M138 72 Q158 62 166 74 Q156 77 157 85 Q149 83 142 90 Z" fill="#FFA493"/>
+      <path d="M73 53 C66 41 64 30 68 18 C77 27 85 37 89 47 Z" fill="#FFF1D6"/>
+      <path d="M73 53 C67 43 66 33 68 18 C70 32 74 43 80 51 Z" fill="#F3DDB8"/>
+      <path d="M127 53 C134 41 136 30 132 18 C123 27 115 37 111 47 Z" fill="#FFF1D6"/>
+      <path d="M127 53 C133 43 134 33 132 18 C130 32 126 43 120 51 Z" fill="#F3DDB8"/>
+      <path d="M92 46 Q96 30 100 27 Q104 30 108 46 Z" fill="#FFF1D6"/>
+      <path d="M82 49 Q85 37 88 34 Q92 38 94 47 Z M118 49 Q115 37 112 34 Q108 38 106 47 Z" fill="#F3DDB8"/>
+
+      <ellipse cx="100" cy="82" rx="47" ry="42" fill="#E85540"/>
+      <ellipse cx="94.5" cy="77.5" rx="46" ry="41" fill="#FF6F5B" clip-path="url(#ember-head-clip)"/>
+      <path d="M66 66 C72 50 96 42 116 48 C108 54 94 56 84 64 C76 70 68 72 66 66 Z" fill="#FF8472" opacity="0.5"/>
+      <path d="M141 96 C136 112 120 122 100 123.5" fill="none" stroke="#C9412E" stroke-width="1.8" stroke-linecap="round" opacity="0.28"/>
+      <ellipse cx="78" cy="57" rx="19" ry="10" fill="#FFFFFF" opacity="0.14" transform="rotate(-22 78 57)"/>
+      <ellipse cx="77" cy="56" rx="12" ry="5.5" fill="#FF9C8B" transform="rotate(-22 77 56)"/>
+
+      <ellipse cx="100" cy="104" rx="21" ry="13" fill="#FF8E7C"/>
+      <ellipse cx="94" cy="100" rx="9" ry="4" fill="#FFFFFF" opacity="0.18"/>
+      <ellipse cx="93" cy="99.5" rx="2.2" ry="1.6" fill="#E85540"/>
+      <ellipse cx="107" cy="99.5" rx="2.2" ry="1.6" fill="#E85540"/>
+
+      <ellipse cx="65" cy="100" rx="8" ry="5" fill="#FF8FA3" opacity="0.55"/>
+      <ellipse cx="135" cy="100" rx="8" ry="5" fill="#FF8FA3" opacity="0.55"/>
+
+      <g class="ember__mouth-smile">
+        <path d="M91 109 Q100 117 109 109" fill="none" stroke="#2A2342" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M102.6 112.6 L104.8 116.2 L106.6 111.7 Z" fill="#FFFFFF"/>
+      </g>
+      <g class="ember__mouth-open">
+        <ellipse cx="100" cy="112" rx="6" ry="6.5" fill="#2A2342"/>
+        <ellipse cx="100" cy="115.6" rx="3.8" ry="2.4" fill="#FF8FA3"/>
+      </g>
+
+      <g class="ember__gaze">
+        <g class="ember__eyes-open">
+          <ellipse cx="80" cy="84" rx="10" ry="11.5" fill="#2A2342"/>
+          <ellipse cx="120" cy="84" rx="10" ry="11.5" fill="#2A2342"/>
+          <circle cx="83.6" cy="79" r="4" fill="#FFFFFF"/><circle cx="77.4" cy="89.4" r="1.8" fill="#FFFFFF"/>
+          <circle cx="123.6" cy="79" r="4" fill="#FFFFFF"/><circle cx="117.4" cy="89.4" r="1.8" fill="#FFFFFF"/>
+        </g>
+      </g>
+      <g class="ember__lids">
+        <path d="M68 89 C68 74 76 70 82 70.5 C88 71 92 76 92 83 Q80 83 68 89 Z M132 89 C132 74 124 70 118 70.5 C112 71 108 76 108 83 Q120 83 132 89 Z" fill="#FF6F5B"/>
+        <path d="M69 88.5 Q79 83.5 91 83.5 M131 88.5 Q121 83.5 109 83.5" fill="none" stroke="#2A2342" stroke-width="2.6" stroke-linecap="round"/>
+      </g>
+      <g class="ember__eyes-closed">
+        <path class="ember__eyes-sleep" d="M70 85 Q80 92 90 85 M110 85 Q120 92 130 85" fill="none" stroke="#2A2342" stroke-width="3" stroke-linecap="round"/>
+        <path class="ember__eyes-happy" d="M70 89 Q80 77 90 89 M110 89 Q120 77 130 89" fill="none" stroke="#2A2342" stroke-width="3.2" stroke-linecap="round"/>
+      </g>
+    </g>
+
+    <!-- Book (focus states) -->
+    <g class="ember__book">
+      <path d="M73 137 L100 141.5 L127 137 L129 162 L100 167 L71 162 Z" fill="#6C7BF0"/>
+      <path d="M76 138.5 L99 142.5 L99 162.5 L75.5 158.8 Z" fill="#FFFFFF"/>
+      <path d="M124 138.5 L101 142.5 L101 162.5 L124.5 158.8 Z" fill="#F1EFFF"/>
+      <path d="M80 145 L95 147.4 M80 150 L95 152.4 M80 155 L91 156.8 M105 147.4 L120 145 M105 152.4 L120 150" fill="none" stroke="#C9C5EC" stroke-width="1.6" stroke-linecap="round"/>
+    </g>
+
+    <!-- Arms (pivot at the shoulders) -->
+    <path class="ember__arm-l" d="M73 128 L68.5 147" fill="none" stroke="#E85540" stroke-width="13" stroke-linecap="round"/>
+    <path class="ember__arm-r" d="M127 128 L131.5 147" fill="none" stroke="#E85540" stroke-width="13" stroke-linecap="round"/>
+
+    <!-- Smoke puff from a nostril -->
+    <g class="ember__puff">
+      <circle cx="127" cy="107" r="2.6" fill="#FFFFFF" opacity="0.9"/>
+      <circle cx="134" cy="103.5" r="3.4" fill="#FFFFFF" opacity="0.85"/>
+      <circle cx="142.5" cy="99" r="4.4" fill="#FFFFFF" opacity="0.8"/>
+    </g>
+  </g>
+
+  <!-- Floating Z's (sleeping) -->
+  <g class="ember__zzz" fill="none" stroke="#7C74B8" stroke-linecap="round" stroke-linejoin="round">
+    <path class="ember__z" d="M146 50 H153 L146 57 H153" stroke-width="2.4"/>
+    <path class="ember__z" d="M156 33 H165 L156 42 H165" stroke-width="2.7"/>
+    <path class="ember__z" d="M168 14 H179 L168 25 H179" stroke-width="3"/>
+  </g>
+
+  <!-- Celebration sparkles -->
+  <g class="ember__sparkles">
+    <path class="ember__spark" d="M38 50 Q38 58 46 58 Q38 58 38 66 Q38 58 30 58 Q38 58 38 50 Z" fill="#FFC94D"/>
+    <path class="ember__spark" d="M162 46 Q162 55 171 55 Q162 55 162 64 Q162 55 153 55 Q162 55 162 46 Z" fill="#FFC94D"/>
+    <path class="ember__spark" d="M56 18 Q56 23 61 23 Q56 23 56 28 Q56 23 51 23 Q56 23 56 18 Z" fill="#FF8FA3"/>
+    <path class="ember__spark" d="M146 14 Q146 20 152 20 Q146 20 146 26 Q146 20 140 20 Q146 20 146 14 Z" fill="#8FA0FF"/>
+    <path class="ember__spark" d="M22 104 Q22 110 28 110 Q22 110 22 116 Q22 110 16 110 Q22 110 22 104 Z" fill="#8FA0FF"/>
+    <path class="ember__spark" d="M180 100 Q180 106 186 106 Q180 106 180 112 Q180 106 174 106 Q180 106 180 100 Z" fill="#FF8FA3"/>
+  </g>
+
+  <!-- Butterfly (break-active) -->
+  <g class="ember__butterfly">
+    <g transform="translate(156 56)">
+      <g class="ember__bfly">
+        <ellipse cx="-4.5" cy="-3" rx="5" ry="6.2" fill="#B9A6FF" transform="rotate(-25 -4.5 -3)"/>
+        <ellipse cx="4.5" cy="-3" rx="5" ry="6.2" fill="#B9A6FF" transform="rotate(25 4.5 -3)"/>
+        <ellipse cx="-3.6" cy="4" rx="3.4" ry="4" fill="#FF8FA3"/>
+        <ellipse cx="3.6" cy="4" rx="3.4" ry="4" fill="#FF8FA3"/>
+        <rect x="-1" y="-7" width="2" height="14" rx="1" fill="#2A2342"/>
+      </g>
+    </g>
+  </g>
+</svg>

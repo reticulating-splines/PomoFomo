@@ -1,0 +1,53 @@
+<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- PomoFomo app icon: Ember's face on a watercolour-washed tile -->
+  <defs>
+    <radialGradient id="icon-wash" cx="35%" cy="28%" r="85%">
+      <stop offset="0" stop-color="#F1F2FF"/>
+      <stop offset="0.55" stop-color="#DCE0FF"/>
+      <stop offset="1" stop-color="#C3CAFA"/>
+    </radialGradient>
+    <filter id="icon-grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.33  0 0 0 0 0.55  0 0 0 0.5 0" result="g"/>
+      <feComposite in="g" in2="SourceGraphic" operator="in" result="gc"/>
+      <feBlend in="SourceGraphic" in2="gc" mode="multiply"/>
+    </filter>
+    <filter id="icon-soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="5"/></filter>
+    <clipPath id="icon-tile"><rect x="4" y="4" width="120" height="120" rx="30"/></clipPath>
+    <clipPath id="icon-head"><ellipse cx="64" cy="76" rx="41" ry="36"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#icon-tile)">
+    <rect x="4" y="4" width="120" height="120" fill="url(#icon-wash)" filter="url(#icon-grain)"/>
+    <ellipse cx="34" cy="30" rx="30" ry="20" fill="#FFFFFF" opacity="0.55" filter="url(#icon-soft)"/>
+    <ellipse cx="104" cy="112" rx="34" ry="18" fill="#FFB8A8" opacity="0.35" filter="url(#icon-soft)"/>
+  </g>
+
+  <!-- frills -->
+  <path d="M30 64 Q12 54 6 66 Q15 69 14 77 Q22 75 28 82 Z" fill="#FFA493"/>
+  <path d="M98 64 Q116 54 122 66 Q113 69 114 77 Q106 75 100 82 Z" fill="#FFA493"/>
+  <!-- horns + crest -->
+  <path d="M40 48 C33 37 31 26 35 13 C44 22 52 32 56 43 Z" fill="#FFF1D6"/>
+  <path d="M40 48 C34 38 33 28 35 13 C37 27 41 38 47 46 Z" fill="#F3DDB8"/>
+  <path d="M88 48 C95 37 97 26 93 13 C84 22 76 32 72 43 Z" fill="#FFF1D6"/>
+  <path d="M88 48 C94 38 95 28 93 13 C91 27 87 38 81 46 Z" fill="#F3DDB8"/>
+  <path d="M57 42 Q60 28 64 25 Q68 28 71 42 Z" fill="#FFF1D6"/>
+  <!-- head -->
+  <ellipse cx="64" cy="76" rx="41" ry="36" fill="#E85540"/>
+  <ellipse cx="59" cy="72" rx="40" ry="35" fill="#FF6F5B" clip-path="url(#icon-head)"/>
+  <path d="M32 60 C38 46 60 40 78 45 C70 50 58 52 48 59 C42 64 34 66 32 60 Z" fill="#FF8472" opacity="0.5"/>
+  <ellipse cx="44" cy="54" rx="11" ry="5" fill="#FF9C8B" transform="rotate(-22 44 54)"/>
+  <path d="M101 88 C96 101 82 110 64 111" fill="none" stroke="#C9412E" stroke-width="1.8" stroke-linecap="round" opacity="0.3"/>
+  <!-- face -->
+  <ellipse cx="64" cy="95" rx="18" ry="11" fill="#FF8E7C"/>
+  <ellipse cx="58" cy="91.5" rx="2" ry="1.5" fill="#E85540"/>
+  <ellipse cx="70" cy="91.5" rx="2" ry="1.5" fill="#E85540"/>
+  <ellipse cx="33" cy="91" rx="7" ry="4.5" fill="#FF8FA3" opacity="0.6"/>
+  <ellipse cx="95" cy="91" rx="7" ry="4.5" fill="#FF8FA3" opacity="0.6"/>
+  <ellipse cx="47" cy="76" rx="9" ry="10.5" fill="#2A2342"/>
+  <ellipse cx="81" cy="76" rx="9" ry="10.5" fill="#2A2342"/>
+  <circle cx="50.3" cy="71.5" r="3.6" fill="#FFFFFF"/><circle cx="44.6" cy="81" r="1.6" fill="#FFFFFF"/>
+  <circle cx="84.3" cy="71.5" r="3.6" fill="#FFFFFF"/><circle cx="78.6" cy="81" r="1.6" fill="#FFFFFF"/>
+  <path d="M56 99.5 Q64 106.5 72 99.5" fill="none" stroke="#2A2342" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M66.6 102.6 L68.6 106 L70.2 101.6 Z" fill="#FFFFFF"/>
+</svg>

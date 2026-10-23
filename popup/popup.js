@@ -1,271 +1,267 @@
 /**
  * PomoFomo — Popup (popup.js)
  *
- * The popup is destroyed on close and recreated on open, so it reads
- * everything from storage on load — and stays live while open by
- * subscribing to chrome.storage.onChanged (state can change under it:
- * alarms fire, the timer tab's buttons are clicked, etc).
+ * The toolbar remote for grown-ups. The popup is destroyed on close and
+ * recreated on open, so it reads everything from storage on load — and stays
+ * live while open by subscribing to chrome.storage.onChanged (alarms fire,
+ * the timer tab's buttons get clicked, etc).
  */
 
-import { MSG, STATUS, BREAK_STATUSES, ACTIVE_STATUSES, DEFAULT_SETTINGS } from '../shared/constants.js';
+import { MSG, STATUS, DEFAULT_SETTINGS, characterInfo } from '../shared/constants.js';
 import { getState, getSettings, saveSettings } from '../shared/storage.js';
+import {
+  isRunning, isBreak, remainingMs, phaseProgress, formatClock, formatMinutes, weekStats, MINUTE,
+} from '../shared/timing.js';
+import { createCharacter } from '../characters/character.js';
 
-// ── Element refs ─────────────────────────────────────────────────────────────
-const bodyEl         = document.body;
-const btnGear        = document.getElementById('btnGear');
-const miniBadge      = document.getElementById('miniBadge');
-const statusPhase    = document.getElementById('statusPhase');
-const statusTime     = document.getElementById('statusTime');
-const statusIcon     = document.getElementById('statusIcon');
-const popupDots      = document.getElementById('popupDots');
-const btnGoToTimer   = document.getElementById('btnGoToTimer');
-const btnQuickStart  = document.getElementById('btnQuickStart');
-const parentControls = document.getElementById('parentControls');
-const btnPauseResume = document.getElementById('btnPauseResume');
-const btnSkip        = document.getElementById('btnSkip');
-const btnStop        = document.getElementById('btnStop');
-const settingsForm   = document.getElementById('settingsForm');
-const statsTotal     = document.getElementById('statsTotal');
-const statsBars      = document.getElementById('statsBars');
+const SPRITE = '../assets/sprite.svg';
+const TIMER_URL = chrome.runtime.getURL('timer/timer.html');
 
-const inputs = {
-  focus:    document.getElementById('sFocusMin'),
-  short:    document.getElementById('sShortMin'),
-  long:     document.getElementById('sLongMin'),
-  sessions: document.getElementById('sSessions'),
-  sound:    document.getElementById('sSound'),
-  persist:  document.getElementById('sPersist'),
-  nag:      document.getElementById('sNag'),
-  dragon:   document.getElementById('sCharDragon'),
-  book:     document.getElementById('sCharBook'),
+const $ = id => document.getElementById(id);
+const el = {
+  body: document.body,
+  btnView: $('btnView'), mini: $('mini'),
+  face: $('nowFace'), phase: $('phase'), time: $('time'), bar: $('bar'), rounds: $('rounds'), ends: $('ends'),
+  btnStart: $('btnStart'), controls: $('controls'),
+  btnPause: $('btnPause'), pauseIcon: $('pauseIcon'), pauseLabel: $('pauseLabel'),
+  btnSkip: $('btnSkip'), skipLabel: $('skipLabel'), btnStop: $('btnStop'), btnOpen: $('btnOpen'),
+  weekBars: $('weekBars'), statRounds: $('statRounds'), statMinutes: $('statMinutes'),
+  statBreaks: $('statBreaks'), statRewardIcon: $('statRewardIcon'),
+  cycleHint: $('cycleHint'),
 };
+const steppers = [...document.querySelectorAll('.stepper')];
+const switches = [...document.querySelectorAll('.switch input')];
+const buddyInputs = [...document.querySelectorAll('input[name="timerCharacter"]')];
 
-const sliderLabels = {
-  focus:    document.getElementById('sFocusVal'),
-  short:    document.getElementById('sShortVal'),
-  long:     document.getElementById('sLongVal'),
-  sessions: document.getElementById('sSessionsVal'),
-};
-
-// ── State ────────────────────────────────────────────────────────────────────
-let currentState = null;
+let state = null;
 let settings = { ...DEFAULT_SETTINGS };
-let tickInterval = null;
+let face = null;
+let faceKey = null;
+let tickTimer = null;
 
 // ── Init ─────────────────────────────────────────────────────────────────────
+
 async function init() {
-  const [state, loadedSettings] = await Promise.all([getState(), getSettings()]);
+  const [loaded, loadedSettings] = await Promise.all([getState(), getSettings()]);
   settings = loadedSettings;
   populateSettings();
-  render(state);
+  await renderFace();
+  render(loaded);
+  loadBuddyArt();
+  requestAnimationFrame(() => requestAnimationFrame(() => el.body.removeAttribute('data-loading')));
 }
 
 init();
 
-// Stay live while open
 chrome.storage.onChanged.addListener(async (_changes, area) => {
   if (area === 'local') {
     render(await getState());
   } else if (area === 'sync') {
     settings = await getSettings();
-    // Don't repopulate the form — the user is probably the one dragging it
-    if (currentState) render(currentState);
+    populateSettings();
+    await renderFace();
+    if (state) render(state);
   }
 });
 
-// ── Render ───────────────────────────────────────────────────────────────────
-function render(state) {
-  currentState = state;
+// ── Status view ──────────────────────────────────────────────────────────────
 
-  statusPhase.textContent = phaseLabel(state);
-  statusIcon.textContent = phaseIcon(state);
-  renderTime(state);
-  renderDots(state);
-  renderStats(state);
+function render(next) {
+  state = next;
+  const idle = state.status === STATUS.IDLE;
 
-  const isIdle = state.status === STATUS.IDLE;
-  btnQuickStart.hidden = !isIdle;
-  parentControls.hidden = isIdle;
-  btnPauseResume.textContent = state.isPaused ? 'Resume' : 'Pause';
+  el.body.dataset.status = state.status;
+  el.body.dataset.paused = String(Boolean(state.isPaused));
+  el.phase.textContent = phaseLabel();
+  el.btnStart.hidden = !idle;
+  el.controls.hidden = idle;
 
-  clearInterval(tickInterval);
-  if (isRunning(state)) {
-    tickInterval = setInterval(() => renderTime(currentState), 1000);
+  el.pauseLabel.textContent = state.isPaused ? 'Resume' : 'Pause';
+  el.pauseIcon.setAttribute('href', `${SPRITE}#${state.isPaused ? 'play' : 'pause'}`);
+  el.skipLabel.textContent = isBreak(state) ? 'End break' : 'Skip';
+
+  const total = settings.sessionsBeforeLongBreak;
+  el.rounds.textContent = idle
+    ? `${settings.focusMinutes} min focus · ${settings.shortBreakMinutes} min break`
+    : `Round ${Math.min(state.sessionNumber, total)} of ${total}`;
+
+  face?.setState(faceState());
+  renderWeek();
+
+  clearInterval(tickTimer);
+  tick();
+  if (isRunning(state)) tickTimer = setInterval(tick, 1000);
+}
+
+function tick() {
+  const left = remainingMs(state);
+  const clock = formatClock(left ?? settings.focusMinutes * MINUTE);
+  el.time.textContent = clock;
+  el.bar.style.width = `${(isBreak(state) ? phaseProgress(state) : 1 - phaseProgress(state)) * 100}%`;
+  el.mini.textContent = left == null ? '' : `${clock} · ${phaseLabel()}`;
+
+  if (left != null && !state.isPaused) {
+    const at = new Date(Date.now() + left).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    el.ends.textContent = `${isBreak(state) ? 'Back to it' : 'Break'} at ${at}`;
+  } else {
+    el.ends.textContent = '';
   }
 }
 
-function renderTime(state) {
-  let remaining = null;
-  if (state.isPaused && state.pausedRemaining != null) {
-    remaining = state.pausedRemaining;
-  } else if (state.startTime && state.phaseDuration) {
-    remaining = Math.max(0, state.phaseDuration - (Date.now() - state.startTime));
+function phaseLabel() {
+  if (state.isPaused) return 'Paused';
+  switch (state.status) {
+    case STATUS.FOCUS:         return 'Focusing';
+    case STATUS.FOCUS_WARNING: return 'Break soon';
+    case STATUS.BREAK:         return 'On a break';
+    case STATUS.LONG_BREAK:    return 'Big break';
+    default:                   return 'Ready to start';
   }
-
-  statusTime.textContent = formatTime(remaining ?? settings.focusMinutes * 60 * 1000);
-
-  miniBadge.textContent = remaining != null && state.status !== STATUS.IDLE
-    ? `${formatTime(remaining)} · ${phaseLabel(state)}`
-    : '';
 }
 
-function renderDots(state) {
-  const onBreak = BREAK_STATUSES.includes(state.status);
-  popupDots.replaceChildren(
-    ...Array.from({ length: settings.sessionsBeforeLongBreak }, (_, i) => {
-      const n = i + 1;
-      const dot = document.createElement('span');
-      dot.className = 'session-dot-mini';
-      if (n < state.sessionNumber || (onBreak && n === state.sessionNumber)) {
-        dot.classList.add('done');
-      } else if (n === state.sessionNumber) {
-        dot.classList.add('current');
-      }
-      return dot;
-    }),
-  );
+function faceState() {
+  if (state.isPaused) return 'idle';
+  switch (state.status) {
+    case STATUS.FOCUS:         return 'focus';
+    case STATUS.FOCUS_WARNING: return 'focus-tired';
+    case STATUS.BREAK:
+    case STATUS.LONG_BREAK:    return 'break-active';
+    default:                   return 'idle';
+  }
 }
 
-// ── This week (from the SW's session log) ────────────────────────────────────
-const DAY_MS = 24 * 60 * 60 * 1000;
-const BAR_MAX_PX = 34;
-const BAR_MIN_PX = 10;
+async function renderFace() {
+  if (faceKey === settings.timerCharacter) return;
+  faceKey = settings.timerCharacter;
+  face?.destroy();
+  face = await createCharacter(settings.timerCharacter, el.face);
+  if (state) face.setState(faceState());
+}
 
-function renderStats(state) {
-  const logs = Array.isArray(state.logs) ? state.logs : [];
+function renderWeek() {
+  const days = weekStats(state.logs);
+  const max = Math.max(1, ...days.map(d => d.rounds));
+  const { reward } = characterInfo(settings.timerCharacter);
 
-  // Last 7 calendar days, oldest first, today last
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const start = new Date(today.getTime() - (6 - i) * DAY_MS);
-    return {
-      start: start.getTime(),
-      label: start.toLocaleDateString(undefined, { weekday: 'narrow' }),
-      isToday: i === 6,
-      count: 0,
-      minutes: 0,
-    };
-  });
-
-  for (const entry of logs) {
-    if (entry.type !== 'focus' || !entry.endedAt) continue;
-    const day = days.find(d => entry.endedAt >= d.start && entry.endedAt < d.start + DAY_MS);
-    if (!day) continue;
-    day.count++;
-    const ms = entry.startedAt ? entry.endedAt - entry.startedAt : entry.scheduledDuration ?? 0;
-    day.minutes += Math.round(ms / 60000);
-  }
-
-  const totalCount = days.reduce((n, d) => n + d.count, 0);
-  const totalMinutes = days.reduce((n, d) => n + d.minutes, 0);
-  statsTotal.textContent = totalCount
-    ? `${totalCount} session${totalCount === 1 ? '' : 's'} · ${formatMinutes(totalMinutes)}`
-    : 'No sessions yet';
-
-  const max = Math.max(1, ...days.map(d => d.count));
-  statsBars.replaceChildren(...days.map(day => {
+  el.weekBars.replaceChildren(...days.map(day => {
     const col = document.createElement('div');
-    col.className = 'stats-col' + (day.isToday ? ' today' : '');
-    col.title = `${day.count} session${day.count === 1 ? '' : 's'}`;
-
-    const bar = document.createElement('div');
-    bar.className = 'stats-bar' + (day.count ? '' : ' zero');
-    bar.style.height = day.count
-      ? `${BAR_MIN_PX + (BAR_MAX_PX - BAR_MIN_PX) * (day.count / max)}px`
-      : '3px';
-
+    col.className = 'day' + (day.isToday ? ' is-today' : '') + (day.rounds ? '' : ' is-zero');
+    col.title = `${day.longLabel}: ${day.rounds} round${day.rounds === 1 ? '' : 's'}, ${day.breaks} full break${day.breaks === 1 ? '' : 's'}`;
+    const n = document.createElement('span');
+    n.className = 'day__n';
+    n.textContent = day.rounds || '';
+    const bar = document.createElement('span');
+    bar.className = 'day__bar';
+    bar.style.height = day.rounds ? `${(day.rounds / max) * 56}px` : '4px';
     const label = document.createElement('span');
-    label.className = 'day-label';
+    label.className = 'day__label';
     label.textContent = day.label;
-
-    col.append(bar, label);
+    col.append(n, bar, label);
     return col;
   }));
+  el.weekBars.setAttribute('aria-label',
+    days.map(d => `${d.longLabel} ${d.rounds}`).join(', ') + ' focus rounds');
+
+  el.statRounds.textContent = days.reduce((n, d) => n + d.rounds, 0);
+  el.statMinutes.textContent = formatMinutes(days.reduce((n, d) => n + d.minutes, 0));
+  el.statBreaks.textContent = days.reduce((n, d) => n + d.breaks, 0);
+  el.statRewardIcon.setAttribute('href', `${SPRITE}#${reward}`);
 }
 
-function formatMinutes(min) {
-  return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min}m`;
-}
+// ── Settings view ────────────────────────────────────────────────────────────
 
-// ── Settings form ────────────────────────────────────────────────────────────
 function populateSettings() {
-  inputs.focus.value    = settings.focusMinutes;
-  inputs.short.value    = settings.shortBreakMinutes;
-  inputs.long.value     = settings.longBreakMinutes;
-  inputs.sessions.value = settings.sessionsBeforeLongBreak;
-  inputs.sound.checked  = settings.soundEnabled;
-  inputs.persist.checked = settings.persistOnRelaunch;
-  inputs.nag.checked    = settings.nagDuringBreak;
-  inputs.dragon.checked = settings.timerCharacter !== 'book';
-  inputs.book.checked   = settings.timerCharacter === 'book';
-  updateSliderLabels();
+  for (const s of steppers) renderStepper(s, settings[s.dataset.key]);
+  for (const input of switches) input.checked = Boolean(settings[input.dataset.key]);
+  for (const input of buddyInputs) input.checked = input.value === (settings.timerCharacter === 'book' ? 'book' : 'dragon');
+
+  const n = settings.sessionsBeforeLongBreak;
+  el.cycleHint.textContent =
+    `${n} rounds of ${settings.focusMinutes} min, with ${settings.shortBreakMinutes} min breaks, then a ${settings.longBreakMinutes} min big break.`;
 }
 
-function updateSliderLabels() {
-  sliderLabels.focus.textContent    = `${inputs.focus.value} min`;
-  sliderLabels.short.textContent    = `${inputs.short.value} min`;
-  sliderLabels.long.textContent     = `${inputs.long.value} min`;
-  sliderLabels.sessions.textContent = inputs.sessions.value;
+function renderStepper(stepper, value) {
+  const { min, max, unit } = stepper.dataset;
+  stepper.querySelector('output').textContent = unit ? `${value} ${unit}` : value;
+  stepper.querySelector('[data-dir="-1"]').disabled = value <= Number(min);
+  stepper.querySelector('[data-dir="1"]').disabled = value >= Number(max);
 }
 
-// Live-save on any input. The SW reads settings fresh at each transition,
-// and the timer tab reacts to the sync-area change — no message needed.
-settingsForm.addEventListener('input', async () => {
-  updateSliderLabels();
+for (const stepper of steppers) {
+  stepper.addEventListener('click', e => {
+    const btn = e.target.closest('.stepper__btn');
+    if (!btn || btn.disabled) return;
+    const { key, min, max, step } = stepper.dataset;
+    const value = Math.min(Number(max), Math.max(Number(min),
+      settings[key] + Number(btn.dataset.dir) * Number(step)));
+    save({ [key]: value });
+  });
+}
+
+for (const input of switches) {
+  input.addEventListener('change', () => save({ [input.dataset.key]: input.checked }));
+}
+
+for (const input of buddyInputs) {
+  input.addEventListener('change', () => { if (input.checked) save({ timerCharacter: input.value }); });
+}
+
+// Optimistic: update locally right away; the sync-area change re-renders too.
+// The SW reads settings fresh at each transition, and the timer tab reacts
+// to the sync change — no message needed.
+async function save(partial) {
+  settings = { ...settings, ...partial };
+  populateSettings();
   try {
-    await saveSettings({
-      focusMinutes:            Number(inputs.focus.value),
-      shortBreakMinutes:       Number(inputs.short.value),
-      longBreakMinutes:        Number(inputs.long.value),
-      sessionsBeforeLongBreak: Number(inputs.sessions.value),
-      soundEnabled:            inputs.sound.checked,
-      persistOnRelaunch:       inputs.persist.checked,
-      nagDuringBreak:          inputs.nag.checked,
-      timerCharacter:          inputs.book.checked ? 'book' : 'dragon',
-    });
+    await saveSettings(partial);
   } catch (e) {
     console.error('[PomoFomo Popup] Settings save failed:', e);
   }
-});
+}
+
+async function loadBuddyArt() {
+  for (const art of document.querySelectorAll('.buddy__art')) {
+    const c = await createCharacter(art.dataset.char, art);
+    c.setState('idle');
+  }
+}
 
 // ── View toggle ──────────────────────────────────────────────────────────────
-btnGear.addEventListener('click', () => {
-  bodyEl.dataset.view = bodyEl.dataset.view === 'settings' ? 'status' : 'settings';
+
+el.btnView.addEventListener('click', () => {
+  const toSettings = el.body.dataset.view !== 'settings';
+  el.body.dataset.view = toSettings ? 'settings' : 'status';
+  el.btnView.setAttribute('aria-expanded', String(toSettings));
+  el.btnView.setAttribute('aria-label', toSettings ? 'Back to status' : 'Settings');
 });
 
 // ── Actions ──────────────────────────────────────────────────────────────────
-btnGoToTimer.addEventListener('click', async () => {
+
+el.btnOpen.addEventListener('click', async () => {
   await focusTimerTab();
   window.close();
 });
 
-btnQuickStart.addEventListener('click', async () => {
+el.btnStart.addEventListener('click', async () => {
   await sendMsg(MSG.START);
   await focusTimerTab();
   window.close();
 });
 
-btnPauseResume.addEventListener('click', () =>
-  sendMsg(currentState?.isPaused ? MSG.RESUME : MSG.PAUSE));
-
-btnSkip.addEventListener('click', () => sendMsg(MSG.SKIP));
-
-btnStop.addEventListener('click', async () => {
-  await sendMsg(MSG.STOP);
-  window.close();
-});
+el.btnPause.addEventListener('click', () => sendMsg(state?.isPaused ? MSG.RESUME : MSG.PAUSE));
+el.btnSkip.addEventListener('click', () => sendMsg(MSG.SKIP));
+el.btnStop.addEventListener('click', () => sendMsg(MSG.STOP));
 
 async function focusTimerTab() {
-  const timerUrl = chrome.runtime.getURL('timer/timer.html');
   try {
     const tabs = await chrome.tabs.query({});
-    const tab = tabs.find(t => t.url && t.url.startsWith(timerUrl));
+    const tab = tabs.find(t => t.url && t.url.startsWith(TIMER_URL));
     if (tab) {
       await chrome.tabs.update(tab.id, { active: true });
       await chrome.windows.update(tab.windowId, { focused: true });
+    } else {
+      await chrome.tabs.create({ url: TIMER_URL, pinned: true, active: true });
     }
-    // No tab? The SW recreates it shortly; nothing to do here.
   } catch (e) {
     console.warn('[PomoFomo Popup] Could not focus timer tab:', e);
   }
@@ -278,38 +274,4 @@ async function sendMsg(type) {
     console.error('[PomoFomo Popup] sendMsg failed:', type, e);
     return null;
   }
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-function phaseLabel(state) {
-  if (state.isPaused) return 'Paused';
-  switch (state.status) {
-    case STATUS.FOCUS:         return 'Focus';
-    case STATUS.FOCUS_WARNING: return 'Almost done!';
-    case STATUS.BREAK:         return 'Break';
-    case STATUS.LONG_BREAK:    return 'Long break';
-    default:                   return 'Ready';
-  }
-}
-
-function phaseIcon(state) {
-  if (BREAK_STATUSES.includes(state.status)) return '🌿';
-  if (ACTIVE_STATUSES.includes(state.status)) {
-    return settings.timerCharacter === 'book' ? '📖' : '🐉';
-  }
-  return settings.timerCharacter === 'book' ? '📚' : '🐉';
-}
-
-function isRunning(state) {
-  return state.startTime != null
-    && state.phaseDuration != null
-    && !state.isPaused
-    && state.status !== STATUS.IDLE;
-}
-
-function formatTime(ms) {
-  const totalSec = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }

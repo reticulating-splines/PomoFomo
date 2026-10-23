@@ -1,70 +1,77 @@
 /**
- * PomoFomo — Timer Tab (timer.js)
+ * PomoFomo — Timer tab (timer.js)
  *
  * Pure renderer: reads state from chrome.storage on load, subscribes to
  * chrome.storage.onChanged for every update, and sends user actions to the
  * service worker. No timing decisions happen here — the per-second interval
  * only repaints time derived from startTime/phaseDuration.
  *
- * Chimes are derived from observed status transitions (focus → warning,
- * anything → break, snooze), so no push messaging from the SW is needed.
+ * Chimes, celebrations and the reward toast are derived from observed status
+ * transitions, so no push messaging from the SW is needed.
  */
 
-import {
-  STATUS, MSG, BREAK_STATUSES, DEFAULT_SETTINGS,
-} from '../shared/constants.js';
+import { STATUS, MSG, DEFAULT_SETTINGS, UI_KEYS, characterInfo } from '../shared/constants.js';
 import { getState, getSettings } from '../shared/storage.js';
-import { createCharacter } from './character.js';
+import {
+  isRunning, isBreak, remainingMs, phaseProgress, formatClock, isFullBreak, rewardsToday, MINUTE,
+} from '../shared/timing.js';
+import { ideasFor } from '../shared/break-ideas.js';
+import { createCharacter } from '../characters/character.js';
 import { FaviconUpdater } from '../favicon/favicon.js';
 import { SoundPlayer } from '../sounds/sounds.js';
 
-// ── Arc geometry (matches the SVG in timer.html) ─────────────────────────────
-const ARC_RADIUS = 96;
-const ARC_CIRCUMFERENCE = 2 * Math.PI * ARC_RADIUS;
+const SPRITE = '../assets/sprite.svg';
+const RING_R = 136;
+const RING_C = 2 * Math.PI * RING_R;
+const BREAK_DONE_MS = 1600; // break → focus celebration before the focus pose
+const SLEEPY_MS = 10_000;   // last seconds of the warning: the character nods off
+const TOAST_MS = 4200;
 
-// How long the character celebrates "break-done" when a break rolls into the
-// next focus session, before settling into the focus pose.
-const BREAK_DONE_MS = 1600;
+const $ = id => document.getElementById(id);
+const el = {
+  body: document.body,
+  arc: $('arc'), knob: $('knob'),
+  time: $('time'), caption: $('caption'), bubble: $('bubble'),
+  roundDots: $('roundDots'), roundLabel: $('roundLabel'),
+  hoard: $('hoard'), hoardIcon: $('hoardIcon'), hoardCount: $('hoardCount'), hoardLabel: $('hoardLabel'),
+  btnStart: $('btnStart'), btnSnooze: $('btnSnooze'), btnStop: $('btnStop'), actionsNote: $('actionsNote'),
+  breakCard: $('breakCard'), breakTitle: $('breakTitle'), breakLede: $('breakLede'),
+  idea: $('idea'), ideaArt: $('ideaArt'), ideaTitle: $('ideaTitle'), ideaText: $('ideaText'), btnIdea: $('btnIdea'),
+  rewardHint: $('rewardHint'), rewardHintIcon: $('rewardHintIcon'), rewardHintText: $('rewardHintText'),
+  toast: $('toast'), toastIcon: $('toastIcon'), toastText: $('toastText'),
+  characterContainer: $('characterContainer'),
+  intro: $('intro'), introChar: $('introChar'), introTitle: $('introTitle'),
+  introRewardIcon: $('introRewardIcon'), introRewardText: $('introRewardText'), btnIntro: $('btnIntro'),
+};
 
-// ── Element refs ─────────────────────────────────────────────────────────────
-const bodyEl        = document.body;
-const progressArc   = document.getElementById('progressArc');
-const timeDisplay   = document.getElementById('timeDisplay');
-const statusLabel   = document.getElementById('statusLabel');
-const sessionDots   = document.getElementById('sessionDots');
-const sessionLabel  = document.getElementById('sessionLabel');
-const btnStart      = document.getElementById('btnStart');
-const btnSnooze     = document.getElementById('btnSnooze');
-const btnStopLink   = document.getElementById('btnStopLink');
-const breakBanner   = document.getElementById('breakBanner');
-const bannerTitle   = document.getElementById('breakBannerTitle');
-const bannerSubtitle = document.getElementById('breakBannerSubtitle');
-const characterContainer = document.getElementById('characterContainer');
+const favicon = new FaviconUpdater($('favicon'));
+const sounds = new SoundPlayer();
 
-const favicon = new FaviconUpdater(document.getElementById('favicon'));
-const sounds  = new SoundPlayer();
-
-// ── Local caches ─────────────────────────────────────────────────────────────
-let currentState = null;
+let state = null;
 let settings = { ...DEFAULT_SETTINGS };
 let character = null;
-let tickInterval = null;
-let celebrateTimer = null; // non-null while playing the break-done pose
+let tickTimer = null;
+let celebrating = null; // timeout id while the break-done pose plays
+let toastTimer = null;
+let ideaShift = 0;      // "Another idea" presses during the current break
+let ideaBreakKey = null;
 
-progressArc.style.strokeDasharray = ARC_CIRCUMFERENCE;
+el.arc.style.strokeDasharray = RING_C;
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 
 async function init() {
-  const [state, loadedSettings] = await Promise.all([getState(), getSettings()]);
+  const [loaded, loadedSettings, ui] = await Promise.all([
+    getState(), getSettings(), chrome.storage.local.get(UI_KEYS.INTRO_SEEN),
+  ]);
   settings = loadedSettings;
   sounds.setEnabled(settings.soundEnabled);
-  character = await createCharacter(settings.timerCharacter, characterContainer);
-  characterContainer.setAttribute(
-    'aria-label',
-    settings.timerCharacter === 'book' ? 'Page the book' : 'Ember the dragon',
-  );
-  render(state);
+  character = await createCharacter(settings.timerCharacter, el.characterContainer);
+  applyCharacterText();
+  render(loaded);
+  requestAnimationFrame(() => requestAnimationFrame(() => el.body.removeAttribute('data-loading')));
+
+  if (!ui[UI_KEYS.INTRO_SEEN] && loaded.status === STATUS.IDLE) showIntro();
 }
 
 init();
@@ -73,201 +80,150 @@ init();
 
 chrome.storage.onChanged.addListener(async (changes, area) => {
   if (area === 'local') {
-    const prev = currentState;
+    // UI-only keys (intro flag) don't affect the timer
+    if (Object.keys(changes).every(k => Object.values(UI_KEYS).includes(k))) return;
+    const prev = state;
     const next = await getState();
     onTransition(prev, next);
     render(next);
   } else if (area === 'sync') {
-    const prevCharacter = settings.timerCharacter;
+    const prevKey = settings.timerCharacter;
     settings = await getSettings();
     sounds.setEnabled(settings.soundEnabled);
-    if (settings.timerCharacter !== prevCharacter) await swapCharacter();
-    if (currentState) render(currentState);
+    if (settings.timerCharacter !== prevKey) await swapCharacter();
+    if (state) render(state);
   }
 });
 
+document.addEventListener('visibilitychange', () => { if (state) render(state); });
+
 async function swapCharacter() {
   character?.destroy();
-  character = await createCharacter(settings.timerCharacter, characterContainer);
-  characterContainer.setAttribute(
-    'aria-label',
-    settings.timerCharacter === 'book' ? 'Page the book' : 'Ember the dragon',
-  );
-  if (currentState) character.setState(characterState(currentState));
+  character = await createCharacter(settings.timerCharacter, el.characterContainer);
+  applyCharacterText();
 }
 
-// ── Transition effects (chimes + celebrations) ───────────────────────────────
+function applyCharacterText() {
+  const info = characterInfo(settings.timerCharacter);
+  el.body.dataset.char = info.kind;
+  el.characterContainer.setAttribute('aria-label', `${info.name} the ${info.kind}`);
+  const icon = `${SPRITE}#${info.reward}`;
+  for (const use of [el.hoardIcon, el.rewardHintIcon, el.toastIcon, el.introRewardIcon]) {
+    use.setAttribute('href', icon);
+  }
+  el.introTitle.textContent = `Hi! I’m ${info.name}.`;
+  el.introRewardText.innerHTML = `<strong>Stay away for the whole break</strong> to earn a ${info.reward}!`;
+}
+
+// ── Transition effects (chimes, celebrations, rewards) ───────────────────────
 
 function onTransition(prev, next) {
-  if (!prev || prev.status === next.status) {
-    // Same phase — the only interesting micro-transition is snooze
-    if (prev && !prev.snoozeUsed && next.snoozeUsed) sounds.playChime('snooze');
+  if (!prev) return;
+  if (prev.status === next.status) {
+    if (!prev.snoozeUsed && next.snoozeUsed) sounds.playChime('snooze');
     return;
   }
 
-  const wasBreak = BREAK_STATUSES.includes(prev.status);
-  const isBreak  = BREAK_STATUSES.includes(next.status);
-
+  const wasBreak = isBreak(prev);
   if (next.status === STATUS.FOCUS_WARNING) {
     sounds.playChime('warning');
-  } else if (isBreak && !wasBreak) {
+  } else if (isBreak(next) && !wasBreak) {
     sounds.playChime('break');
   } else if (wasBreak && next.status === STATUS.FOCUS) {
-    // Break rolled into the next session — let the character celebrate first
-    celebrate();
+    celebrate(next);
   }
 }
 
-function celebrate() {
-  clearTimeout(celebrateTimer);
+function celebrate(next) {
+  clearTimeout(celebrating);
   character?.setState('break-done');
-  celebrateTimer = setTimeout(() => {
-    celebrateTimer = null;
-    if (currentState) character?.setState(characterState(currentState));
+  celebrating = setTimeout(() => {
+    celebrating = null;
+    if (state) render(state);
   }, BREAK_DONE_MS);
+
+  const last = next.logs?.at(-1);
+  if (last && isFullBreak(last)) {
+    const { reward } = characterInfo(settings.timerCharacter);
+    sounds.playChime('reward');
+    showToast(`+1 ${reward}! You took a full break.`);
+    el.hoard.classList.remove('is-bumped');
+    void el.hoard.offsetWidth; // restart the bump animation
+    el.hoard.classList.add('is-bumped');
+  } else {
+    sounds.playChime('ready');
+  }
+}
+
+function showToast(text) {
+  el.toastText.textContent = text;
+  el.toast.classList.add('is-shown');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.toast.classList.remove('is-shown'), TOAST_MS);
 }
 
 // ── Render ───────────────────────────────────────────────────────────────────
 
-function render(state) {
-  currentState = state;
+function render(next) {
+  state = next;
+  const onBreak = isBreak(state);
 
-  bodyEl.dataset.status = state.status;
-  bodyEl.dataset.paused = String(Boolean(state.isPaused));
+  el.body.dataset.status = state.status;
+  el.body.dataset.paused = String(Boolean(state.isPaused));
+  el.body.dataset.phase = onBreak ? 'break' : state.status === STATUS.IDLE ? 'idle' : 'focus';
 
-  if (character && !celebrateTimer) {
-    const target = characterState(state);
-    // Don't replay the break-start jump if we've already settled into
-    // break-active (e.g. a settings change re-rendered mid-break)
-    if (!(target === 'break-start' && character.currentState === 'break-active')) {
-      character.setState(target);
-    }
-  }
+  renderRounds();
+  renderHoard();
+  renderControls();
+  renderBreakCard();
+  renderCharacter();
 
-  renderSessionDots(state);
-  renderControls(state);
-  renderBanner(state);
-  statusLabel.textContent = statusText(state);
+  clearInterval(tickTimer);
+  tick();
+  if (isRunning(state)) tickTimer = setInterval(tick, 1000);
 
-  clearInterval(tickInterval);
-  if (isRunning(state)) {
-    tick();
-    tickInterval = setInterval(tick, 1000);
-  } else {
-    // Idle or paused: show a static time and a full (ready) ring
-    const ms = state.isPaused && state.pausedRemaining != null
-      ? state.pausedRemaining
-      : state.phaseDuration ?? settings.focusMinutes * 60 * 1000;
-    timeDisplay.textContent = formatTime(ms);
-    progressArc.style.strokeDashoffset = 0;
-  }
-
-  favicon.update(state);
-  syncAmbient(state);
+  sounds.setAmbient(onBreak && !state.isPaused);
 }
 
+/** Everything that changes second by second. */
 function tick() {
-  const state = currentState;
-  if (!isRunning(state)) return;
+  const left = remainingMs(state);
+  const ratio = phaseProgress(state);
+  const onBreak = isBreak(state);
+  const idle = state.status === STATUS.IDLE;
 
-  const elapsed = Date.now() - state.startTime;
-  const remaining = Math.max(0, state.phaseDuration - elapsed);
-  const ratio = Math.min(1, elapsed / state.phaseDuration);
+  el.time.textContent = formatClock(left ?? settings.focusMinutes * MINUTE);
 
-  timeDisplay.textContent = formatTime(remaining);
+  // Focus drains the ring toward empty; breaks fill it back up (recharge)
+  const shown = idle ? 1 : onBreak ? ratio : 1 - ratio;
+  el.arc.style.strokeDashoffset = RING_C * (1 - shown);
+  const angle = -Math.PI / 2 + shown * 2 * Math.PI;
+  el.knob.setAttribute('cx', (150 + RING_R * Math.cos(angle)).toFixed(2));
+  el.knob.setAttribute('cy', (150 + RING_R * Math.sin(angle)).toFixed(2));
+  el.knob.style.opacity = shown > 0.004 ? '' : '0';
 
-  // Focus: ring drains toward empty. Break: ring fills back up (recharge).
-  const shown = BREAK_STATUSES.includes(state.status) ? ratio : 1 - ratio;
-  progressArc.style.strokeDashoffset = ARC_CIRCUMFERENCE * (1 - shown);
+  el.roundDots.style.setProperty('--p', onBreak ? 1 : ratio);
+  el.caption.textContent = caption();
+  setBubble(bubbleText(left));
+  document.title = idle ? 'PomoFomo' : `${formatClock(left)} · ${phaseName()} — PomoFomo`;
+
+  // Final seconds of the warning: nod off (visual only — the SW stays in warning)
+  if (state.status === STATUS.FOCUS_WARNING && !state.isPaused && !celebrating) {
+    character?.setState(left <= SLEEPY_MS ? 'focus-sleeping' : 'focus-tired');
+  }
 
   favicon.update(state);
-
-  // Final seconds of the warning: the character nods off (visual only —
-  // the SW state stays focus-warning)
-  if (state.status === STATUS.FOCUS_WARNING && character && !celebrateTimer) {
-    character.setState(remaining <= 10_000 ? 'focus-sleeping' : 'focus-tired');
-  }
-
-  character?.setProgress(ratio, state);
 }
 
-function renderSessionDots(state) {
-  const total = settings.sessionsBeforeLongBreak;
-  const onBreak = BREAK_STATUSES.includes(state.status);
-
-  sessionDots.replaceChildren(...Array.from({ length: total }, (_, i) => {
-    const n = i + 1;
-    const dot = document.createElement('span');
-    dot.className = 'session-dot';
-    // During a break, sessionNumber is the session just completed
-    if (n < state.sessionNumber || (onBreak && n === state.sessionNumber)) {
-      dot.classList.add('done');
-    } else if (n === state.sessionNumber) {
-      dot.classList.add('current');
-    }
-    return dot;
-  }));
-
-  sessionLabel.textContent = onBreak
-    ? (state.status === STATUS.LONG_BREAK ? 'Long break' : 'Break time')
-    : `Session ${state.sessionNumber}`;
+function renderCharacter() {
+  if (!character || celebrating) return;
+  const target = characterState();
+  // Don't replay the break-start jump once it has settled into break-active
+  if (target === 'break-start' && ['break-start', 'break-active'].includes(character.currentState)) return;
+  character.setState(target);
 }
 
-function renderControls(state) {
-  btnStart.hidden = state.status !== STATUS.IDLE;
-  btnSnooze.hidden = !(state.status === STATUS.FOCUS_WARNING && !state.snoozeUsed);
-  btnStopLink.hidden = state.status === STATUS.IDLE;
-}
-
-function renderBanner(state) {
-  const onBreak = BREAK_STATUSES.includes(state.status);
-  breakBanner.hidden = !onBreak;
-  if (!onBreak) return;
-
-  const isBook = settings.timerCharacter === 'book';
-  if (state.status === STATUS.LONG_BREAK) {
-    bannerTitle.textContent = isBook ? 'Long break time! 📚✨' : 'Long break time! 🐉✨';
-    bannerSubtitle.textContent = 'You finished a whole cycle — amazing work!';
-  } else {
-    bannerTitle.textContent = isBook ? 'Break time! 📖' : 'Break time! 🐉';
-    bannerSubtitle.textContent = isBook
-      ? 'Another chapter done — you\'ve earned this rest.'
-      : 'Ember is celebrating — you\'ve earned this rest.';
-  }
-}
-
-// ── Sounds ───────────────────────────────────────────────────────────────────
-
-function syncAmbient(state) {
-  const wantAmbient = BREAK_STATUSES.includes(state.status) && !state.isPaused;
-  sounds.setAmbient(wantAmbient);
-}
-
-// Web Audio needs a user gesture; the Start button is the natural one, but
-// any click in the tab unlocks (covers reloads mid-session).
-document.addEventListener('click', async () => {
-  const wasUnlocked = sounds.unlocked;
-  await sounds.unlock();
-  if (!wasUnlocked && currentState) syncAmbient(currentState);
-}, { passive: true });
-
-// ── User actions — send and forget; storage.onChanged repaints ───────────────
-
-btnStart.addEventListener('click', () => sendMsg(MSG.START));
-btnSnooze.addEventListener('click', () => sendMsg(MSG.SNOOZE));
-btnStopLink.addEventListener('click', () => sendMsg(MSG.STOP));
-
-async function sendMsg(type) {
-  try {
-    await chrome.runtime.sendMessage({ type });
-  } catch (e) {
-    console.error('[PomoFomo Timer] sendMsg failed:', type, e);
-  }
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function characterState(state) {
+function characterState() {
   if (state.isPaused) return 'idle';
   switch (state.status) {
     case STATUS.FOCUS:         return 'focus';
@@ -278,28 +234,183 @@ function characterState(state) {
   }
 }
 
-function isRunning(state) {
-  return state.startTime != null
-    && state.phaseDuration != null
-    && !state.isPaused
-    && state.status !== STATUS.IDLE;
+function renderRounds() {
+  const total = settings.sessionsBeforeLongBreak;
+  const current = Math.min(state.sessionNumber, total);
+  const onBreak = isBreak(state);
+  const idle = state.status === STATUS.IDLE;
+
+  el.roundDots.replaceChildren(...Array.from({ length: total }, (_, i) => {
+    const n = i + 1;
+    const li = document.createElement('li');
+    if (n < current || (onBreak && n === current)) li.className = 'is-done';
+    else if (n === current && !idle) li.className = 'is-current';
+    return li;
+  }));
+
+  el.roundLabel.textContent = state.status === STATUS.LONG_BREAK
+    ? 'All rounds done!'
+    : `Round ${current} of ${total}`;
 }
 
-function formatTime(ms) {
-  const totalSec = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+function renderHoard() {
+  const { reward } = characterInfo(settings.timerCharacter);
+  const count = rewardsToday(state.logs);
+  el.hoardCount.textContent = count;
+  el.hoardLabel.textContent = `${reward}${count === 1 ? '' : 's'} today`;
+  el.hoard.title = `${count} full break${count === 1 ? '' : 's'} taken today`;
 }
 
-function statusText(state) {
+function renderControls() {
+  const idle = state.status === STATUS.IDLE;
+  const canSnooze = state.status === STATUS.FOCUS_WARNING && !state.snoozeUsed && !state.isPaused;
+
+  el.btnStart.hidden = !idle;
+  el.btnSnooze.hidden = !canSnooze;
+  el.btnStop.hidden = idle;
+
+  el.actionsNote.textContent =
+    idle ? `${settings.focusMinutes} min focus, then a ${settings.shortBreakMinutes} min break`
+    : canSnooze ? 'You can do this once each round.'
+    : state.isPaused ? 'The timer is paused.'
+    : '';
+}
+
+function renderBreakCard() {
+  const onBreak = isBreak(state);
+  el.breakCard.hidden = !onBreak;
+  if (!onBreak) return;
+
+  const isLong = state.status === STATUS.LONG_BREAK;
+  const { reward } = characterInfo(settings.timerCharacter);
+  el.breakTitle.textContent = isLong ? 'Big break!' : 'Break time!';
+  el.breakLede.textContent = isLong
+    ? 'You finished every round! Get away from the screen for a while.'
+    : 'Step away from the screen. Here’s an idea:';
+
+  // One stable idea list per break (seeded by the log length, which only
+  // changes between phases), shifted by "Another idea" presses.
+  const breakKey = `${state.status}:${state.logs?.length ?? 0}`;
+  if (breakKey !== ideaBreakKey) { ideaBreakKey = breakKey; ideaShift = 0; }
+  showIdea(false);
+
+  const lost = state.breakInterrupted;
+  el.rewardHint.classList.toggle('is-lost', lost);
+  el.rewardHintText.textContent = lost
+    ? `No ${reward} this break — you went back to the screen. You can still finish your break!`
+    : `Stay away for the whole break to earn a ${reward}!`;
+}
+
+function showIdea(animate) {
+  const ideas = ideasFor({ isLong: state.status === STATUS.LONG_BREAK, seed: state.logs?.length ?? 0 });
+  const idea = ideas[ideaShift % ideas.length];
+  el.ideaArt.setAttribute('href', `${SPRITE}#${idea.icon}`);
+  el.ideaTitle.textContent = idea.title;
+  el.ideaText.textContent = idea.text;
+  if (animate) {
+    el.idea.classList.remove('is-new');
+    void el.idea.offsetWidth;
+    el.idea.classList.add('is-new');
+  }
+}
+
+// ── Words ────────────────────────────────────────────────────────────────────
+
+function phaseName() {
   if (state.isPaused) return 'Paused';
   switch (state.status) {
-    case STATUS.IDLE:          return 'Ready to focus?';
-    case STATUS.FOCUS:         return 'Focus time';
-    case STATUS.FOCUS_WARNING: return 'Almost there…';
-    case STATUS.BREAK:         return 'Break time!';
-    case STATUS.LONG_BREAK:    return 'Long break — great work!';
+    case STATUS.FOCUS:
+    case STATUS.FOCUS_WARNING: return 'Focus';
+    case STATUS.BREAK:         return 'Break';
+    case STATUS.LONG_BREAK:    return 'Big break';
     default:                   return '';
+  }
+}
+
+function caption() {
+  if (state.isPaused) return 'paused';
+  switch (state.status) {
+    case STATUS.FOCUS:
+    case STATUS.FOCUS_WARNING: return 'until break';
+    case STATUS.BREAK:         return 'of break left';
+    case STATUS.LONG_BREAK:    return 'of big break left';
+    default:                   return 'of focus time';
+  }
+}
+
+function bubbleText(left) {
+  if (celebrating) return 'Welcome back! Let’s do another round.';
+  if (state.isPaused) return 'Taking a pause. We’ll pick up right where we left off.';
+  const progress = phaseProgress(state);
+  switch (state.status) {
+    case STATUS.FOCUS:
+      if (state.snoozeUsed) return 'Okay, five more minutes — then break time!';
+      return progress < 0.08
+        ? 'Let’s go! I’ll call you when it’s break time.'
+        : 'I’m keeping time. You keep going!';
+    case STATUS.FOCUS_WARNING:
+      return left <= SLEEPY_MS
+        ? 'Zzz… break time is coming…'
+        : 'Almost break time! Find a good place to stop.';
+    case STATUS.BREAK:
+    case STATUS.LONG_BREAK:
+      if (state.breakInterrupted && document.visibilityState === 'visible') {
+        return 'Welcome back! Your break isn’t over yet.';
+      }
+      return state.status === STATUS.LONG_BREAK
+        ? 'You did every round! Go play!'
+        : 'Break time! Get up and move with me!';
+    default:
+      return 'Ready when you are! Press Start and I’ll call you when it’s break time.';
+  }
+}
+
+function setBubble(text) {
+  if (el.bubble.textContent === text) return;
+  el.bubble.textContent = text;
+  // Restart the pop-in so a new line feels spoken
+  el.bubble.classList.add('is-swapping');
+  void el.bubble.offsetWidth;
+  el.bubble.classList.remove('is-swapping');
+}
+
+// ── Intro (first run) ────────────────────────────────────────────────────────
+
+async function showIntro() {
+  const introCharacter = await createCharacter(settings.timerCharacter, el.introChar);
+  introCharacter.setState('break-done');
+  setTimeout(() => introCharacter.setState('idle'), BREAK_DONE_MS);
+  el.intro.showModal();
+  el.intro.addEventListener('close', () => {
+    introCharacter.destroy();
+    chrome.storage.local.set({ [UI_KEYS.INTRO_SEEN]: true });
+    el.btnStart.focus();
+  }, { once: true });
+}
+
+el.btnIntro.addEventListener('click', () => el.intro.close());
+
+// ── Sound unlock ─────────────────────────────────────────────────────────────
+// Web Audio needs a user gesture; Start is the natural one, but any click in
+// the tab unlocks (covers reloads mid-session).
+
+document.addEventListener('click', async () => {
+  const wasUnlocked = sounds.unlocked;
+  await sounds.unlock();
+  if (!wasUnlocked && state) sounds.setAmbient(isBreak(state) && !state.isPaused);
+}, { passive: true });
+
+// ── User actions — send and forget; storage.onChanged repaints ───────────────
+
+el.btnStart.addEventListener('click', () => sendMsg(MSG.START));
+el.btnSnooze.addEventListener('click', () => sendMsg(MSG.SNOOZE));
+el.btnStop.addEventListener('click', () => sendMsg(MSG.STOP));
+el.btnIdea.addEventListener('click', () => { ideaShift++; showIdea(true); });
+
+async function sendMsg(type) {
+  try {
+    await chrome.runtime.sendMessage({ type });
+  } catch (e) {
+    console.error('[PomoFomo Timer] sendMsg failed:', type, e);
   }
 }

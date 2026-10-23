@@ -16,13 +16,17 @@
 
 import {
   ALARM, STATUS, MSG, BREAK_STATUSES, FOCUS_STATUSES, ACTIVE_STATUSES,
-  DEFAULT_STATE, DEFAULT_SETTINGS,
-  WARNING_MINUTES, SNOOZE_MINUTES, NAG_PERIOD_MINUTES, MAX_LOG_ENTRIES,
+  DEFAULT_STATE, DEFAULT_SETTINGS, characterInfo,
+  WARNING_MINUTES, SNOOZE_MINUTES, NAG_PERIOD_MINUTES, MAX_LOG_ENTRIES, BREAK_GRACE_MS,
 } from './shared/constants.js';
 import { getState, setState, getSettings } from './shared/storage.js';
 
 const TIMER_URL = chrome.runtime.getURL('timer/timer.html');
-const NOTIFICATION_ID = 'pomofomo-break';
+const NOTE = {
+  BREAK:   'pomofomo-break',
+  WARNING: 'pomofomo-warning',
+  NUDGE:   'pomofomo-nudge',
+};
 const MINUTE = 60 * 1000;
 
 // ── Top-level event listener registration ────────────────────────────────────
@@ -31,6 +35,7 @@ chrome.runtime.onInstalled.addListener(handleInstalled);
 chrome.runtime.onStartup.addListener(handleStartup);
 chrome.alarms.onAlarm.addListener(handleAlarm);
 chrome.tabs.onRemoved.addListener(handleTabRemoved);
+chrome.tabs.onActivated.addListener(handleTabActivated);
 chrome.notifications.onClicked.addListener(handleNotificationClicked);
 chrome.storage.onChanged.addListener(handleStorageChanged);
 
@@ -56,7 +61,7 @@ async function handleInstalled(details) {
     await chrome.storage.sync.set({ ...DEFAULT_SETTINGS, ...existing });
   }
   await refreshActionUi();
-  await ensureTimerTab();
+  await ensureTimerTab({ activate: details.reason === 'install' });
 }
 
 async function handleStartup() {
@@ -81,7 +86,7 @@ async function handleStartup() {
 async function reconcileAlarms() {
   const state = await getState();
   if (!ACTIVE_STATUSES.includes(state.status)) return;
-  if (state.isPaused) return; // paused state persists; alarms recreate on resume
+  if (state.isPaused) { await refreshActionUi(); return; } // alarms recreate on resume
 
   const now = Date.now();
   const phaseEnd = state.startTime + state.phaseDuration;
@@ -98,19 +103,16 @@ async function reconcileAlarms() {
     } else if (state.status === STATUS.FOCUS) {
       await setState({ status: STATUS.FOCUS_WARNING });
     }
-    await ensureBadgeTick();
-    await refreshActionUi();
   } else {
-    // break / longBreak
     if (now >= phaseEnd) {
       await finishBreak({ natural: true });
       return;
     }
     await chrome.alarms.create(ALARM.BREAK_END, { when: phaseEnd });
     await ensureNagAlarm();
-    await ensureBadgeTick();
-    await refreshActionUi();
   }
+  await ensureBadgeTick();
+  await refreshActionUi();
 }
 
 // ── Alarm handler ─────────────────────────────────────────────────────────────
@@ -123,6 +125,7 @@ async function handleAlarm(alarm) {
       if (state.status !== STATUS.FOCUS) return; // stale alarm guard
       await setState({ status: STATUS.FOCUS_WARNING });
       await refreshActionUi();
+      await showWarningNotification(state);
       break;
 
     case ALARM.FOCUS_END:
@@ -145,7 +148,7 @@ async function handleAlarm(alarm) {
     }
 
     case ALARM.BADGE_TICK:
-      await updateBadge(state);
+      await refreshActionUi(state);
       break;
   }
 }
@@ -164,25 +167,31 @@ function phaseSnapshot({ status, sessionNumber, startTime = null, phaseDuration 
     isPaused: false,
     pausedRemaining: null,
     snoozeUsed: false,
+    breakInterrupted: false,
   };
 }
 
-async function startFocus(sessionNumber) {
+/** `extra` rides along in the same write (e.g. the finished break's log). */
+async function startFocus(sessionNumber, extra = {}) {
   const settings = await getSettings();
   const duration = settings.focusMinutes * MINUTE;
   const now = Date.now();
 
   await chrome.alarms.clearAll();
-  await setState(phaseSnapshot({
-    status: STATUS.FOCUS,
-    sessionNumber,
-    startTime: now,
-    phaseDuration: duration,
-  }));
+  await setState({
+    ...phaseSnapshot({
+      status: STATUS.FOCUS,
+      sessionNumber,
+      startTime: now,
+      phaseDuration: duration,
+    }),
+    ...extra,
+  });
 
   await scheduleFocusAlarms(now + duration);
   await ensureBadgeTick();
   await refreshActionUi();
+  await clearNotifications(NOTE.BREAK, NOTE.NUDGE);
 }
 
 async function scheduleFocusAlarms(phaseEnd) {
@@ -196,59 +205,63 @@ async function scheduleFocusAlarms(phaseEnd) {
 async function startBreak({ natural }) {
   const state = await getState();
   const settings = await getSettings();
-
-  await appendLog({
-    type: 'focus',
-    scheduledDuration: state.phaseDuration,
-    startedAt: state.startTime,
-    endedAt: Date.now(),
-    completedNaturally: natural,
-    snoozed: state.snoozeUsed,
-  });
+  const now = Date.now();
 
   const isLong = state.sessionNumber >= settings.sessionsBeforeLongBreak;
   const breakMinutes = isLong ? settings.longBreakMinutes : settings.shortBreakMinutes;
-  const breakStatus = isLong ? STATUS.LONG_BREAK : STATUS.BREAK;
-  const now = Date.now();
 
+  // Log entry + phase change land in ONE write so listeners never see a
+  // half-finished transition.
   await chrome.alarms.clearAll();
-  await setState(phaseSnapshot({
-    status: breakStatus,
-    sessionNumber: state.sessionNumber,
-    startTime: now,
-    phaseDuration: breakMinutes * MINUTE,
-  }));
+  await setState({
+    ...phaseSnapshot({
+      status: isLong ? STATUS.LONG_BREAK : STATUS.BREAK,
+      sessionNumber: state.sessionNumber,
+      startTime: now,
+      phaseDuration: breakMinutes * MINUTE,
+    }),
+    logs: withLogEntry(state.logs, {
+      type: 'focus',
+      scheduledDuration: state.phaseDuration,
+      startedAt: state.startTime,
+      endedAt: now,
+      completedNaturally: natural,
+      snoozed: state.snoozeUsed,
+    }),
+  });
 
   await chrome.alarms.create(ALARM.BREAK_END, { when: now + breakMinutes * MINUTE });
   await ensureNagAlarm();
   await ensureBadgeTick();
   await refreshActionUi();
   await activateTimerTab();
-  await showBreakNotification(isLong, breakMinutes);
+  await clearNotifications(NOTE.WARNING);
+  await showBreakNotification(settings, isLong, breakMinutes);
 }
 
 async function finishBreak({ natural }) {
   const state = await getState();
-
-  await appendLog({
+  const logs = withLogEntry(state.logs, {
     type: state.status === STATUS.LONG_BREAK ? 'longBreak' : 'shortBreak',
     scheduledDuration: state.phaseDuration,
     startedAt: state.startTime,
     endedAt: Date.now(),
     completedNaturally: natural,
+    interrupted: state.breakInterrupted,
   });
 
   // After a long break the cycle restarts at session 1; otherwise advance.
   // The next focus session auto-starts — the child only ever clicks Start
   // once, at the very beginning.
   const next = state.status === STATUS.LONG_BREAK ? 1 : state.sessionNumber + 1;
-  await startFocus(next);
+  await startFocus(next, { logs });
 }
 
 async function stopTimer() {
   await chrome.alarms.clearAll();
   await setState(phaseSnapshot({ status: STATUS.IDLE, sessionNumber: 1 }));
   await refreshActionUi();
+  await clearNotifications(NOTE.BREAK, NOTE.WARNING, NOTE.NUDGE);
 }
 
 // ── Message handler (user actions from timer tab / popup) ────────────────────
@@ -306,7 +319,7 @@ async function handleMessage(msg) {
 
     case MSG.SNOOZE: {
       // One snooze per session, only while the warning is showing
-      if (state.status !== STATUS.FOCUS_WARNING || state.snoozeUsed) break;
+      if (state.status !== STATUS.FOCUS_WARNING || state.snoozeUsed || state.isPaused) break;
       const newDuration = state.phaseDuration + SNOOZE_MINUTES * MINUTE;
       const newEnd = state.startTime + newDuration;
       await chrome.alarms.clear(ALARM.FOCUS_END);
@@ -322,6 +335,7 @@ async function handleMessage(msg) {
         when: newEnd - WARNING_MINUTES * MINUTE,
       });
       await refreshActionUi();
+      await clearNotifications(NOTE.WARNING);
       break;
     }
 
@@ -338,12 +352,16 @@ async function handleMessage(msg) {
 
 let creatingTimerTab = null; // dedupe concurrent ensureTimerTab() calls
 
-async function findTimerTabs() {
-  const tabs = await chrome.tabs.query({});
-  return tabs.filter(t => t.url && t.url.startsWith(TIMER_URL));
+function isTimerUrl(url) {
+  return Boolean(url) && url.startsWith(TIMER_URL);
 }
 
-async function ensureTimerTab() {
+async function findTimerTabs() {
+  const tabs = await chrome.tabs.query({});
+  return tabs.filter(t => isTimerUrl(t.url));
+}
+
+async function ensureTimerTab({ activate = false } = {}) {
   const existing = await findTimerTabs();
 
   if (existing.length > 0) {
@@ -359,7 +377,7 @@ async function ensureTimerTab() {
 
   if (!creatingTimerTab) {
     creatingTimerTab = chrome.tabs
-      .create({ url: TIMER_URL, pinned: true, active: false })
+      .create({ url: TIMER_URL, pinned: true, active: activate })
       .finally(() => { creatingTimerTab = null; });
   }
   return creatingTimerTab;
@@ -384,28 +402,83 @@ function handleTabRemoved(_tabId, removeInfo) {
   }, 500);
 }
 
+// ── Break guard ──────────────────────────────────────────────────────────────
+// Switching to another tab mid-break marks the break as interrupted (so it
+// won't earn a reward) and sends ONE friendly nudge. No content scripts and
+// no lockout — the kid stays in charge.
+
+async function handleTabActivated({ tabId }) {
+  const state = await getState();
+  if (!BREAK_STATUSES.includes(state.status) || state.isPaused || state.breakInterrupted) return;
+
+  const remaining = state.startTime + state.phaseDuration - Date.now();
+  if (remaining <= BREAK_GRACE_MS) return;
+
+  let tab;
+  try { tab = await chrome.tabs.get(tabId); } catch { return; }
+  if (isTimerUrl(tab.url) || isTimerUrl(tab.pendingUrl)) return;
+
+  await setState({ breakInterrupted: true });
+  const settings = await getSettings();
+  await showNudgeNotification(settings, remaining);
+}
+
 // ── Notifications ─────────────────────────────────────────────────────────────
 
-async function showBreakNotification(isLong, breakMinutes) {
+const ICON_URL = chrome.runtime.getURL('assets/icons/icon128.png');
+
+async function notify(id, options) {
   try {
-    await chrome.notifications.clear(NOTIFICATION_ID);
-    await chrome.notifications.create(NOTIFICATION_ID, {
-      type: 'basic',
-      iconUrl: chrome.runtime.getURL('assets/icons/icon128.png'),
-      title: isLong ? '🐉 Long break time!' : '🐉 Break time!',
-      message: isLong
-        ? `Amazing work! Time for a ${breakMinutes}-minute break. You earned it!`
-        : `Great focus! Take a quick ${breakMinutes}-minute break.`,
-      priority: 2,
-    });
+    await chrome.notifications.clear(id);
+    await chrome.notifications.create(id, { type: 'basic', iconUrl: ICON_URL, ...options });
   } catch (e) {
     console.warn('[PomoFomo BG] Notification failed:', e);
   }
 }
 
+async function clearNotifications(...ids) {
+  for (const id of ids) {
+    try { await chrome.notifications.clear(id); } catch { /* fine */ }
+  }
+}
+
+async function showWarningNotification(state) {
+  const settings = await getSettings();
+  const { name } = characterInfo(settings.timerCharacter);
+  await notify(NOTE.WARNING, {
+    title: `${WARNING_MINUTES} minutes until break`,
+    message: state.snoozeUsed
+      ? `Time to find a good place to stop. ${name} will call you soon.`
+      : `Find a good place to stop — save your game, finish your sentence. ${name} will call you soon.`,
+    priority: 0,
+    silent: true, // the timer tab plays its own gentle chime
+  });
+}
+
+async function showBreakNotification(settings, isLong, breakMinutes) {
+  const { name } = characterInfo(settings.timerCharacter);
+  await notify(NOTE.BREAK, {
+    title: isLong ? 'Big break time!' : 'Break time!',
+    message: isLong
+      ? `You finished every round! Take ${breakMinutes} minutes away from the screen. ${name} will keep watch.`
+      : `Great focus! Take ${breakMinutes} minutes to stretch, drink water and rest your eyes.`,
+    priority: 2,
+  });
+}
+
+async function showNudgeNotification(settings, remaining) {
+  const info = characterInfo(settings.timerCharacter);
+  const mins = Math.max(1, Math.ceil(remaining / MINUTE));
+  await notify(NOTE.NUDGE, {
+    title: 'Psst… it’s still break time',
+    message: `${mins} more minute${mins === 1 ? '' : 's'} to rest. ${info.name} will call you when it’s time to go again.`,
+    priority: 1,
+  });
+}
+
 async function handleNotificationClicked(notificationId) {
-  if (notificationId !== NOTIFICATION_ID) return;
-  await chrome.notifications.clear(NOTIFICATION_ID);
+  if (!Object.values(NOTE).includes(notificationId)) return;
+  await chrome.notifications.clear(notificationId);
   await activateTimerTab();
 }
 
@@ -433,27 +506,33 @@ async function handleStorageChanged(changes, area) {
 }
 
 // ── Toolbar icon + badge ──────────────────────────────────────────────────────
+// Icon: the character tile with a phase-colored progress ring around it.
+// Badge: minutes remaining ("14m"). A 1-minute alarm keeps both fresh; while
+// paused the alarm is cleared and both freeze.
 
-const ICON_COLORS = {
-  [STATUS.IDLE]:          '#9A8070',
-  [STATUS.FOCUS]:         '#F5A623',
-  [STATUS.FOCUS_WARNING]: '#E8842A',
-  [STATUS.BREAK]:         '#2BBFA0',
-  [STATUS.LONG_BREAK]:    '#2BBFA0',
+const PHASE_COLORS = {
+  [STATUS.IDLE]:          '#8E86A6',
+  [STATUS.FOCUS]:         '#6C6FF5',
+  [STATUS.FOCUS_WARNING]: '#F29A1F',
+  [STATUS.BREAK]:         '#1FAE79',
+  [STATUS.LONG_BREAK]:    '#1FAE79',
 };
+const PAUSED_COLOR = '#8E86A6';
 
-/** Redraw both the icon and the minutes badge from current state. */
-async function refreshActionUi() {
-  const state = await getState();
-  await updateActionIcon(state.status);
+async function refreshActionUi(state) {
+  state ??= await getState();
+  await updateActionIcon(state);
   await updateBadge(state);
 }
 
-/**
- * Toolbar badge: minutes remaining ("14m") while a phase runs, empty at idle.
- * A repeating 1-minute alarm (BADGE_TICK) keeps it fresh; while paused the
- * alarm is cleared and the badge freezes at the paused minutes.
- */
+function phaseFraction(state) {
+  if (!ACTIVE_STATUSES.includes(state.status) || !state.phaseDuration) return null;
+  const remaining = state.isPaused
+    ? state.pausedRemaining ?? 0
+    : state.startTime + state.phaseDuration - Date.now();
+  return Math.min(1, Math.max(0, remaining / state.phaseDuration));
+}
+
 async function updateBadge(state) {
   let text = '';
   if (ACTIVE_STATUSES.includes(state.status)) {
@@ -467,12 +546,24 @@ async function updateBadge(state) {
     await chrome.action.setBadgeText({ text });
     if (text) {
       await chrome.action.setBadgeBackgroundColor({
-        color: ICON_COLORS[state.status] ?? ICON_COLORS[STATUS.IDLE],
+        color: state.isPaused ? PAUSED_COLOR : PHASE_COLORS[state.status] ?? PHASE_COLORS[STATUS.IDLE],
       });
       await chrome.action.setBadgeTextColor({ color: '#FFFFFF' });
     }
+    await chrome.action.setTitle({ title: actionTitle(state) });
   } catch (e) {
     console.warn('[PomoFomo BG] Could not update badge:', e);
+  }
+}
+
+function actionTitle(state) {
+  if (state.isPaused) return 'PomoFomo — paused';
+  switch (state.status) {
+    case STATUS.FOCUS:
+    case STATUS.FOCUS_WARNING: return 'PomoFomo — focusing';
+    case STATUS.BREAK:         return 'PomoFomo — break time';
+    case STATUS.LONG_BREAK:    return 'PomoFomo — big break';
+    default:                   return 'PomoFomo';
   }
 }
 
@@ -480,23 +571,57 @@ async function ensureBadgeTick() {
   await chrome.alarms.create(ALARM.BADGE_TICK, { periodInMinutes: 1 });
 }
 
-async function updateActionIcon(status) {
-  try {
-    const canvas = new OffscreenCanvas(32, 32);
-    const ctx = canvas.getContext('2d');
+const iconBitmaps = {}; // size → ImageBitmap, cached for the SW's lifetime
 
+async function iconBitmap(size) {
+  if (!iconBitmaps[size]) {
+    const res = await fetch(chrome.runtime.getURL(`assets/icons/icon${size}.png`));
+    iconBitmaps[size] = await createImageBitmap(await res.blob());
+  }
+  return iconBitmaps[size];
+}
+
+async function drawIcon(size, state) {
+  const canvas = new OffscreenCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+  const fraction = phaseFraction(state);
+  // Use the 32px art for both sizes: it holds up better when inset.
+  const art = await iconBitmap(32);
+
+  if (fraction == null) {
+    ctx.drawImage(art, 0, 0, size, size);
+    return ctx.getImageData(0, 0, size, size);
+  }
+
+  const line = size * 0.125;
+  const r = size / 2 - line / 2;
+  const c = size / 2;
+  const inset = line * 1.5;
+  ctx.drawImage(art, inset, inset, size - inset * 2, size - inset * 2);
+
+  ctx.lineWidth = line;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(c, c, r, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(142, 134, 166, 0.35)';
+  ctx.stroke();
+
+  // Focus drains toward empty; breaks fill back up (recharge)
+  const shown = BREAK_STATUSES.includes(state.status) ? 1 - fraction : fraction;
+  if (shown > 0.01) {
     ctx.beginPath();
-    ctx.arc(16, 16, 15, 0, 2 * Math.PI);
-    ctx.fillStyle = ICON_COLORS[status] ?? ICON_COLORS[STATUS.IDLE];
-    ctx.fill();
+    ctx.arc(c, c, r, -Math.PI / 2, -Math.PI / 2 + shown * Math.PI * 2);
+    ctx.strokeStyle = state.isPaused ? PAUSED_COLOR : PHASE_COLORS[state.status];
+    ctx.stroke();
+  }
+  return ctx.getImageData(0, 0, size, size);
+}
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('P', 16, 17);
-
-    await chrome.action.setIcon({ imageData: ctx.getImageData(0, 0, 32, 32) });
+async function updateActionIcon(state) {
+  try {
+    await chrome.action.setIcon({
+      imageData: { 16: await drawIcon(16, state), 32: await drawIcon(32, state) },
+    });
   } catch (e) {
     console.warn('[PomoFomo BG] Could not update action icon:', e);
   }
@@ -504,9 +629,7 @@ async function updateActionIcon(status) {
 
 // ── Session log ───────────────────────────────────────────────────────────────
 
-async function appendLog(entry) {
-  const { logs } = await getState();
-  const trimmed = [...(Array.isArray(logs) ? logs : []), { id: crypto.randomUUID(), ...entry }]
+function withLogEntry(logs, entry) {
+  return [...(Array.isArray(logs) ? logs : []), { id: crypto.randomUUID(), ...entry }]
     .slice(-MAX_LOG_ENTRIES);
-  await setState({ logs: trimmed });
 }

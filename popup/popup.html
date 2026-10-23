@@ -3,163 +3,177 @@
 <head>
   <meta charset="UTF-8">
   <title>PomoFomo</title>
+  <link rel="stylesheet" href="../shared/tokens.css">
+  <link rel="stylesheet" href="../characters/ember.css">
+  <link rel="stylesheet" href="../characters/page.css">
   <link rel="stylesheet" href="popup.css">
 </head>
 
-<!-- data-view="status" | "settings" — the gear toggles; CSS slides the panels -->
-<body data-view="status">
+<!-- data-view="status" | "settings"; data-status/data-paused tint the card -->
+<body data-view="status" data-status="idle" data-paused="false" data-loading>
 
-  <header class="popup-header">
-    <span class="brand">🐉 PomoFomo</span>
-
-    <!-- Mini timer badge: keeps context visible while in settings -->
-    <span class="mini-badge" id="miniBadge" aria-label="Current timer status"></span>
-
-    <button class="icon-btn" id="btnGear" aria-label="Toggle settings" title="Settings">
-      <svg viewBox="0 0 20 20" width="18" height="18" fill="none"
-           xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path fill-rule="evenodd" clip-rule="evenodd"
-          d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"
-          fill="currentColor"/>
-        <path fill-rule="evenodd" clip-rule="evenodd"
-          d="M8.2 2.1a1 1 0 011.8 0l.5 1.1a6 6 0 011.5.6l1.1-.4a1 1 0 011.2.5l.8 1.4a1 1 0 01-.3 1.3l-.9.7v1.4l.9.7a1 1 0 01.3 1.3l-.8 1.4a1 1 0 01-1.2.5l-1.1-.4a6 6 0 01-1.5.6l-.5 1.1a1 1 0 01-1.8 0l-.5-1.1A6 6 0 016.2 12l-1.1.4a1 1 0 01-1.2-.5L3 10.4a1 1 0 01.3-1.3l.9-.7V7l-.9-.7A1 1 0 013 5l.8-1.4a1 1 0 011.2-.5l1.1.4a6 6 0 011.5-.6l.5-1.1z"
-          fill="currentColor" opacity="0.3"/>
-      </svg>
+  <header class="bar">
+    <img class="bar__mark" src="../assets/icons/icon.svg" alt="" width="26" height="26">
+    <span class="bar__title" id="barTitle">PomoFomo</span>
+    <!-- Keeps the timer visible while in settings -->
+    <span class="bar__mini" id="mini" aria-hidden="true"></span>
+    <button class="bar__btn" id="btnView" aria-label="Settings" aria-controls="viewSettings" aria-expanded="false">
+      <svg class="icon icon--settings" aria-hidden="true"><use href="../assets/sprite.svg#sliders"/></svg>
+      <svg class="icon icon--back" aria-hidden="true"><use href="../assets/sprite.svg#back"/></svg>
     </button>
   </header>
 
-  <!-- ── View: Status ────────────────────────────────────────────────────── -->
-  <section class="view view-status" id="viewStatus" aria-label="Timer status">
+  <div class="views">
 
-    <div class="status-card">
-      <div class="status-phase-row">
-        <div class="status-icon" id="statusIcon" aria-hidden="true">🐉</div>
-        <div class="status-info">
-          <div class="status-phase" id="statusPhase">Ready</div>
-          <div class="status-time"  id="statusTime">20:00</div>
+    <!-- ── Status ────────────────────────────────────────────────────────── -->
+    <section class="view view--status" id="viewStatus" aria-label="Timer status">
+
+      <div class="now">
+        <div class="now__top">
+          <div class="now__face" id="nowFace" aria-hidden="true"></div>
+          <div class="now__text">
+            <div class="now__phase" id="phase">Ready to start</div>
+            <div class="now__time" id="time" role="timer">20:00</div>
+          </div>
         </div>
-      </div>
-      <div class="session-dots-mini" id="popupDots" role="img" aria-label="Session progress"></div>
-    </div>
 
-    <!-- This week: one bar per day of completed focus sessions -->
-    <div class="stats-card">
-      <div class="stats-header">
-        <span class="stats-title">This week</span>
-        <span class="stats-total" id="statsTotal"></span>
-      </div>
-      <div class="stats-bars" id="statsBars" role="img"
-           aria-label="Focus sessions completed per day over the last 7 days"></div>
-    </div>
+        <div class="now__bar" aria-hidden="true"><span id="bar"></span></div>
+        <div class="now__meta">
+          <span id="rounds">Round 1 of 3</span>
+          <span id="ends"></span>
+        </div>
 
-    <button class="btn btn-primary" id="btnGoToTimer">Open Timer Tab ↗</button>
+        <button class="btn btn--primary now__start" id="btnStart" hidden>
+          <svg class="icon" aria-hidden="true"><use href="../assets/sprite.svg#play"/></svg>
+          Start focus
+        </button>
 
-    <!-- Idle only -->
-    <button class="btn btn-ghost" id="btnQuickStart" hidden>Start Focus</button>
-
-    <!-- Active only: quiet parent controls -->
-    <div class="parent-controls" id="parentControls" hidden>
-      <button class="btn-text" id="btnPauseResume">Pause</button>
-      <span class="dot-sep" aria-hidden="true">·</span>
-      <button class="btn-text" id="btnSkip">Skip phase</button>
-      <span class="dot-sep" aria-hidden="true">·</span>
-      <button class="btn-text" id="btnStop">Stop</button>
-    </div>
-
-  </section>
-
-  <!-- ── View: Settings ──────────────────────────────────────────────────── -->
-  <section class="view view-settings" id="viewSettings" aria-label="Settings">
-
-    <form id="settingsForm" novalidate>
-
-      <div class="field">
-        <label for="sFocusMin">Focus time</label>
-        <div class="slider-row">
-          <input type="range" id="sFocusMin" min="5" max="60" step="5"
-                 aria-label="Focus time in minutes">
-          <span class="slider-val" id="sFocusVal">20 min</span>
+        <!-- Quiet grown-up controls -->
+        <div class="controls" id="controls" hidden>
+          <button class="ctl" id="btnPause">
+            <svg class="icon" aria-hidden="true"><use id="pauseIcon" href="../assets/sprite.svg#pause"/></svg>
+            <span id="pauseLabel">Pause</span>
+          </button>
+          <button class="ctl" id="btnSkip">
+            <svg class="icon" aria-hidden="true"><use href="../assets/sprite.svg#skip"/></svg>
+            <span id="skipLabel">Skip</span>
+          </button>
+          <button class="ctl" id="btnStop">
+            <svg class="icon" aria-hidden="true"><use href="../assets/sprite.svg#stop"/></svg>
+            Stop
+          </button>
         </div>
       </div>
 
-      <div class="field">
-        <label for="sShortMin">Short break</label>
-        <div class="slider-row">
-          <input type="range" id="sShortMin" min="1" max="15" step="1"
-                 aria-label="Short break time in minutes">
-          <span class="slider-val" id="sShortVal">5 min</span>
+      <button class="open-btn" id="btnOpen">
+        Open the timer tab
+        <svg class="icon" aria-hidden="true"><use href="../assets/sprite.svg#open"/></svg>
+      </button>
+
+      <div class="week">
+        <div class="week__head">
+          <h2 class="week__title">This week</h2>
+          <span class="week__legend"><i></i> focus rounds</span>
         </div>
+        <div class="week__bars" id="weekBars" role="img"></div>
+        <dl class="week__stats">
+          <div><dt>Rounds</dt><dd id="statRounds">0</dd></div>
+          <div><dt>Focus time</dt><dd id="statMinutes">0 min</dd></div>
+          <div>
+            <dt id="statRewardLabel">Full breaks</dt>
+            <dd><svg class="icon" aria-hidden="true"><use id="statRewardIcon" href="../assets/sprite.svg#gem"/></svg> <span id="statBreaks">0</span></dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <!-- ── Settings ──────────────────────────────────────────────────────── -->
+    <section class="view view--settings" id="viewSettings" aria-label="Settings">
+
+      <h2 class="group__title">Timer</h2>
+      <div class="group">
+        <div class="stepper" data-key="focusMinutes" data-min="5" data-max="60" data-step="5" data-unit="min">
+          <span class="stepper__label" id="lblFocus">Focus</span>
+          <div class="stepper__ctl" role="group" aria-labelledby="lblFocus">
+            <button type="button" class="stepper__btn" data-dir="-1" aria-label="Less focus time"><svg class="icon"><use href="../assets/sprite.svg#minus"/></svg></button>
+            <output class="stepper__val" aria-live="polite"></output>
+            <button type="button" class="stepper__btn" data-dir="1" aria-label="More focus time"><svg class="icon"><use href="../assets/sprite.svg#plus"/></svg></button>
+          </div>
+        </div>
+        <div class="stepper" data-key="shortBreakMinutes" data-min="1" data-max="15" data-step="1" data-unit="min">
+          <span class="stepper__label" id="lblShort">Short break</span>
+          <div class="stepper__ctl" role="group" aria-labelledby="lblShort">
+            <button type="button" class="stepper__btn" data-dir="-1" aria-label="Shorter break"><svg class="icon"><use href="../assets/sprite.svg#minus"/></svg></button>
+            <output class="stepper__val" aria-live="polite"></output>
+            <button type="button" class="stepper__btn" data-dir="1" aria-label="Longer break"><svg class="icon"><use href="../assets/sprite.svg#plus"/></svg></button>
+          </div>
+        </div>
+        <div class="stepper" data-key="longBreakMinutes" data-min="5" data-max="30" data-step="5" data-unit="min">
+          <span class="stepper__label" id="lblLong">Big break</span>
+          <div class="stepper__ctl" role="group" aria-labelledby="lblLong">
+            <button type="button" class="stepper__btn" data-dir="-1" aria-label="Shorter big break"><svg class="icon"><use href="../assets/sprite.svg#minus"/></svg></button>
+            <output class="stepper__val" aria-live="polite"></output>
+            <button type="button" class="stepper__btn" data-dir="1" aria-label="Longer big break"><svg class="icon"><use href="../assets/sprite.svg#plus"/></svg></button>
+          </div>
+        </div>
+        <div class="stepper" data-key="sessionsBeforeLongBreak" data-min="2" data-max="6" data-step="1" data-unit="rounds">
+          <span class="stepper__label" id="lblRounds">Big break after</span>
+          <div class="stepper__ctl" role="group" aria-labelledby="lblRounds">
+            <button type="button" class="stepper__btn" data-dir="-1" aria-label="Fewer rounds"><svg class="icon"><use href="../assets/sprite.svg#minus"/></svg></button>
+            <output class="stepper__val" aria-live="polite"></output>
+            <button type="button" class="stepper__btn" data-dir="1" aria-label="More rounds"><svg class="icon"><use href="../assets/sprite.svg#plus"/></svg></button>
+          </div>
+        </div>
+        <p class="group__hint" id="cycleHint"></p>
       </div>
 
-      <div class="field">
-        <label for="sLongMin">Long break</label>
-        <div class="slider-row">
-          <input type="range" id="sLongMin" min="5" max="30" step="5"
-                 aria-label="Long break time in minutes">
-          <span class="slider-val" id="sLongVal">15 min</span>
-        </div>
+      <h2 class="group__title">Timer buddy</h2>
+      <div class="buddies" role="radiogroup" aria-label="Timer buddy">
+        <label class="buddy">
+          <input type="radio" name="timerCharacter" value="dragon">
+          <span class="buddy__art" data-char="dragon" aria-hidden="true"></span>
+          <span class="buddy__name">Ember</span>
+          <span class="buddy__kind">the dragon</span>
+        </label>
+        <label class="buddy">
+          <input type="radio" name="timerCharacter" value="book">
+          <span class="buddy__art" data-char="book" aria-hidden="true"></span>
+          <span class="buddy__name">Page</span>
+          <span class="buddy__kind">the book</span>
+        </label>
       </div>
 
-      <div class="field">
-        <label for="sSessions">Sessions before long break</label>
-        <div class="slider-row">
-          <input type="range" id="sSessions" min="2" max="6" step="1"
-                 aria-label="Number of sessions before long break">
-          <span class="slider-val" id="sSessionsVal">3</span>
-        </div>
+      <h2 class="group__title">Breaks</h2>
+      <div class="group">
+        <label class="switch">
+          <span class="switch__text">
+            <span class="switch__label">Sounds</span>
+            <span class="switch__hint">Chimes, plus calm nature sounds during breaks.</span>
+          </span>
+          <input type="checkbox" role="switch" data-key="soundEnabled">
+          <span class="switch__track" aria-hidden="true"></span>
+        </label>
+        <label class="switch">
+          <span class="switch__text">
+            <span class="switch__label">Keep bringing the timer back</span>
+            <span class="switch__hint">During breaks, switch back to the timer tab every 30 seconds.</span>
+          </span>
+          <input type="checkbox" role="switch" data-key="nagDuringBreak">
+          <span class="switch__track" aria-hidden="true"></span>
+        </label>
+        <label class="switch">
+          <span class="switch__text">
+            <span class="switch__label">Resume after Chrome restarts</span>
+            <span class="switch__hint">Otherwise the timer resets when Chrome closes.</span>
+          </span>
+          <input type="checkbox" role="switch" data-key="persistOnRelaunch">
+          <span class="switch__track" aria-hidden="true"></span>
+        </label>
       </div>
 
-      <p class="field-hint">Time changes apply from the next session.</p>
-
-      <div class="divider"></div>
-
-      <div class="field">
-        <label>Timer character</label>
-        <div class="character-row" role="group" aria-label="Choose timer character">
-          <label class="character-option" for="sCharDragon">
-            <input type="radio" id="sCharDragon" name="timerCharacter" value="dragon"
-                   aria-label="Ember the dragon">
-            <span class="character-btn">🐉 Dragon</span>
-          </label>
-          <label class="character-option" for="sCharBook">
-            <input type="radio" id="sCharBook" name="timerCharacter" value="book"
-                   aria-label="Page the book">
-            <span class="character-btn">📖 Book</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="divider"></div>
-
-      <label class="toggle-label" for="sSound">
-        <span>Sounds</span>
-        <div class="toggle-track">
-          <input type="checkbox" id="sSound" role="switch" aria-label="Enable sounds">
-          <div class="toggle-thumb"></div>
-        </div>
-      </label>
-
-      <label class="toggle-label" for="sNag">
-        <span>Nag during break</span>
-        <div class="toggle-track">
-          <input type="checkbox" id="sNag" role="switch"
-                 aria-label="Return to the timer tab every 30 seconds during breaks">
-          <div class="toggle-thumb"></div>
-        </div>
-      </label>
-
-      <label class="toggle-label" for="sPersist">
-        <span>Resume timer after relaunch</span>
-        <div class="toggle-track">
-          <input type="checkbox" id="sPersist" role="switch"
-                 aria-label="Resume timer after browser relaunch">
-          <div class="toggle-thumb"></div>
-        </div>
-      </label>
-
-    </form>
-
-  </section>
+      <p class="foot-note">Time changes start with the next round.</p>
+    </section>
+  </div>
 
   <script type="module" src="popup.js"></script>
 </body>

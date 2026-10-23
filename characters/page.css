@@ -1,0 +1,310 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   Page the book — character states
+   character.js sets exactly one state class on the root <svg class="page">:
+   page--idle | page--focus | page--focus-tired | page--focus-sleeping |
+   page--break-start | page--break-active | page--break-done
+   Joints use transform-box: view-box so origins are plain viewBox coords.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.page { overflow: visible; }
+
+.page .page__root,
+.page .page__inner,
+.page .page__shadow,
+.page .page__cover,
+.page .page__ribbon,
+.page .page__arm-l,
+.page .page__arm-r,
+.page .page__eyes-open,
+.page .page__eyes-look,
+.page .page__glasses,
+.page .page__mouth-open,
+.page .page__butterfly {
+  transform-box: view-box;
+}
+
+.page .page__root,
+.page .page__inner   { transform-origin: 100px 176px; }
+.page .page__shadow  { transform-origin: 100px 180px; }
+.page .page__cover   { transform-origin: 55px 100px; }
+.page .page__ribbon  { transform-origin: 116px 36px; }
+.page .page__arm-l   { transform-origin: 48px 115px; }
+.page .page__arm-r   { transform-origin: 152px 115px; }
+.page .page__eyes-open,
+.page .page__eyes-look,
+.page .page__glasses { transform-origin: 100px 95px; }
+.page .page__mouth-open { transform-origin: 100px 114px; }
+
+.page .page__spark,
+.page .page__leaf,
+.page .page__z,
+.page .page__bfly-wings {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Smooth hand-offs between states */
+.page .page__arm-l,
+.page .page__arm-r,
+.page .page__eyes-look,
+.page .page__glasses,
+.page .page__root,
+.page .page__cover {
+  transition: transform 450ms cubic-bezier(.34, 1.4, .64, 1);
+}
+.page .page__glasses,
+.page .page__lids,
+.page .page__eyes-open,
+.page .page__eyes-closed,
+.page .page__arc-happy,
+.page .page__arc-sleep,
+.page .page__mouth-smile,
+.page .page__mouth-open,
+.page .page__zzz,
+.page .page__butterfly {
+  transition: opacity 300ms ease, transform 450ms cubic-bezier(.34, 1.4, .64, 1);
+}
+
+/* ── Default look (= idle): optional parts hidden ─────────────────────────── */
+.page .page__glasses,
+.page .page__lids,
+.page .page__eyes-closed,
+.page .page__arc-happy,
+.page .page__arc-sleep,
+.page .page__mouth-open,
+.page .page__zzz,
+.page .page__sparkles,
+.page .page__flutter,
+.page .page__butterfly { opacity: 0; }
+
+/* ── Keyframes ────────────────────────────────────────────────────────────── */
+@keyframes page-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50%      { transform: scale(1.012, 1.022); }
+}
+@keyframes page-sway {
+  0%, 100% { transform: rotate(-1.6deg); }
+  50%      { transform: rotate(1.6deg); }
+}
+@keyframes page-blink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  95.5%         { transform: scaleY(.08); }
+}
+@keyframes page-ribbon {
+  0%, 100% { transform: rotate(-6deg); }
+  50%      { transform: rotate(7deg); }
+}
+@keyframes page-wave {
+  0%, 62%, 100% { transform: rotate(0deg); }
+  70%           { transform: rotate(-118deg); }
+  76%           { transform: rotate(-96deg); }
+  82%           { transform: rotate(-118deg); }
+  88%           { transform: rotate(-96deg); }
+  94%           { transform: rotate(-20deg); }
+}
+@keyframes page-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2.5px); }
+}
+@keyframes page-sway-slow {
+  0%, 100% { transform: rotate(-2.6deg); }
+  50%      { transform: rotate(2.2deg); }
+}
+@keyframes page-yawn {
+  0%, 58%, 92%, 100% { opacity: 0; transform: scale(.7); }
+  66%, 84%           { opacity: 1; transform: scale(1, 1.15); }
+}
+@keyframes page-yawn-hide {
+  0%, 58%, 92%, 100% { opacity: 1; }
+  64%, 86%           { opacity: 0; }
+}
+@keyframes page-z {
+  0%   { opacity: 0; transform: translate(-4px, 6px) scale(.5); }
+  30%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(4px, -8px) scale(1.05); }
+}
+@keyframes page-hop {
+  0%   { transform: translateY(0) scale(1, 1); }
+  14%  { transform: translateY(2px) scale(1.07, .9); }
+  48%  { transform: translateY(-22px) scale(.96, 1.05); }
+  78%  { transform: translateY(0) scale(1.06, .93); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes page-shadow-hop {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  48%      { transform: scale(.7); opacity: .6; }
+}
+@keyframes page-flap-open {
+  0%   { transform: scaleX(1); }
+  45%  { transform: scaleX(-.32); }
+  100% { transform: scaleX(1); }
+}
+@keyframes page-flap {
+  0%, 100% { transform: scaleX(1); }
+  50%      { transform: scaleX(.8); }
+}
+@keyframes page-burst {
+  0%   { opacity: 0; transform: scale(0) rotate(0deg); }
+  35%  { opacity: 1; transform: scale(1.25) rotate(45deg); }
+  100% { opacity: 0; transform: scale(.4) rotate(90deg); }
+}
+@keyframes page-leaf-1 {
+  0%   { opacity: 0; transform: translate(0, 0) rotate(0); }
+  15%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-46px, -22px) rotate(-55deg); }
+}
+@keyframes page-leaf-2 {
+  0%   { opacity: 0; transform: translate(0, 0) rotate(0); }
+  15%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(48px, -26px) rotate(50deg); }
+}
+@keyframes page-leaf-3 {
+  0%   { opacity: 0; transform: translate(0, 0) rotate(0); }
+  15%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-8px, -34px) rotate(25deg); }
+}
+@keyframes page-play {
+  0%, 50%, 100% { transform: translateY(0) rotate(0deg); }
+  25%           { transform: translateY(-6px) rotate(-3deg); }
+  75%           { transform: translateY(-6px) rotate(3deg); }
+}
+@keyframes page-stretch-l {
+  0%, 100% { transform: rotate(0deg); }
+  30%, 62% { transform: rotate(108deg); }
+}
+@keyframes page-stretch-r {
+  0%, 100% { transform: rotate(0deg); }
+  30%, 62% { transform: rotate(-108deg); }
+}
+@keyframes page-ribbon-wag {
+  0%, 100% { transform: rotate(-12deg); }
+  50%      { transform: rotate(12deg); }
+}
+@keyframes page-bfly-path {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(-34px, -16px); }
+  50%  { transform: translate(-70px, -2px); }
+  75%  { transform: translate(-34px, 14px); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes page-bfly-flap {
+  0%, 100% { transform: scaleX(1); }
+  50%      { transform: scaleX(.25); }
+}
+@keyframes page-ready {
+  0%, 62%, 100% { transform: translateY(0) scale(1, 1); }
+  14%  { transform: translateY(-14px) scale(.97, 1.04); }
+  28%  { transform: translateY(0) scale(1.05, .94); }
+  42%  { transform: translateY(-7px) scale(.98, 1.02); }
+  54%  { transform: translateY(0) scale(1.02, .98); }
+}
+@keyframes page-shadow-ready {
+  0%, 28%, 54%, 100% { transform: scale(1); }
+  14%  { transform: scale(.8); }
+  42%  { transform: scale(.9); }
+}
+
+/* ── idle ─────────────────────────────────────────────────────────────────── */
+.page--idle .page__inner     { animation: page-breathe 3.4s ease-in-out infinite; }
+.page--idle .page__root      { animation: page-sway 6s ease-in-out infinite; }
+.page--idle .page__eyes-open { animation: page-blink 5s infinite; }
+.page--idle .page__ribbon    { animation: page-ribbon 3s ease-in-out infinite; }
+.page--idle .page__arm-r     { animation: page-wave 8s ease-in-out infinite; }
+
+/* ── focus: reading glasses on, eyes down, attentive bob ──────────────────── */
+.page--focus .page__glasses   { opacity: 1; }
+.page--focus .page__eyes-look { transform: translateY(2.5px); }
+.page--focus .page__root      { animation: page-bob 3s ease-in-out infinite; }
+.page--focus .page__eyes-open { animation: page-blink 8s infinite; }
+.page--focus .page__ribbon    { animation: page-ribbon 5s ease-in-out infinite; }
+.page--focus .page__mouth-smile { transform: scaleX(.8); transform-box: fill-box; transform-origin: center; }
+
+/* ── focus-tired: droopy lids, glasses slipping, slow sway, yawns ─────────── */
+.page--focus-tired .page__glasses   { opacity: 1; transform: translate(-1px, 4px) rotate(-5deg); }
+.page--focus-tired .page__lids      { opacity: 1; }
+.page--focus-tired .page__eyes-look { transform: translateY(1.5px); }
+.page--focus-tired .page__root      { animation: page-sway-slow 4.5s ease-in-out infinite; }
+.page--focus-tired .page__ribbon    { transform: rotate(-14deg); }
+.page--focus-tired .page__mouth-open  { animation: page-yawn 6s ease-in-out infinite; }
+.page--focus-tired .page__mouth-smile { animation: page-yawn-hide 6s ease-in-out infinite; }
+
+/* ── focus-sleeping: eyes closed, Z's, slight lean ────────────────────────── */
+.page--focus-sleeping .page__root       { transform: rotate(-4deg); }
+.page--focus-sleeping .page__inner      { animation: page-breathe 4s ease-in-out infinite; }
+.page--focus-sleeping .page__glasses    { opacity: 1; transform: translate(-2px, 7px) rotate(-8deg); }
+.page--focus-sleeping .page__eyes-open  { opacity: 0; }
+.page--focus-sleeping .page__eyes-closed,
+.page--focus-sleeping .page__arc-sleep  { opacity: 1; }
+.page--focus-sleeping .page__mouth-smile { opacity: 0; }
+.page--focus-sleeping .page__mouth-open { opacity: 1; transform: scale(.42, .5); }
+.page--focus-sleeping .page__ribbon     { transform: rotate(-22deg); }
+.page--focus-sleeping .page__zzz        { opacity: 1; }
+.page--focus-sleeping .page__z          { animation: page-z 3s ease-in-out infinite both; }
+.page--focus-sleeping .page__z--2       { animation-delay: 1s; }
+.page--focus-sleeping .page__z--3       { animation-delay: 2s; }
+
+/* ── break-start (~700 ms): hop, cover flaps open, burst ──────────────────── */
+.page--break-start .page__root       { animation: page-hop 700ms cubic-bezier(.3, .7, .4, 1) both; }
+.page--break-start .page__shadow     { animation: page-shadow-hop 700ms ease both; }
+.page--break-start .page__cover      { animation: page-flap-open 700ms cubic-bezier(.4, 0, .3, 1) both; }
+.page--break-start .page__arm-l      { transform: rotate(112deg); }
+.page--break-start .page__arm-r      { transform: rotate(-112deg); }
+.page--break-start .page__eyes-open  { opacity: 0; }
+.page--break-start .page__eyes-closed,
+.page--break-start .page__arc-happy  { opacity: 1; }
+.page--break-start .page__mouth-smile { opacity: 0; }
+.page--break-start .page__mouth-open { opacity: 1; }
+.page--break-start .page__ribbon     { transform: rotate(16deg); }
+.page--break-start .page__sparkles,
+.page--break-start .page__flutter    { opacity: 1; }
+.page--break-start .page__spark      { animation: page-burst 700ms ease-out both; }
+.page--break-start .page__spark--2,
+.page--break-start .page__spark--5   { animation-delay: 80ms; }
+.page--break-start .page__spark--3,
+.page--break-start .page__spark--6   { animation-delay: 140ms; }
+.page--break-start .page__leaf--1    { animation: page-leaf-1 700ms ease-out both; }
+.page--break-start .page__leaf--2    { animation: page-leaf-2 700ms 60ms ease-out both; }
+.page--break-start .page__leaf--3    { animation: page-leaf-3 700ms 120ms ease-out both; }
+
+/* ── break-active: stretching, flapping cover, butterfly friend ───────────── */
+.page--break-active .page__root       { animation: page-play 1.8s ease-in-out infinite; }
+.page--break-active .page__cover      { animation: page-flap 1.8s ease-in-out infinite; }
+.page--break-active .page__arm-l      { animation: page-stretch-l 3.6s ease-in-out infinite; }
+.page--break-active .page__arm-r      { animation: page-stretch-r 3.6s ease-in-out infinite; }
+.page--break-active .page__ribbon     { animation: page-ribbon-wag .9s ease-in-out infinite; }
+.page--break-active .page__eyes-open  { opacity: 0; }
+.page--break-active .page__eyes-closed,
+.page--break-active .page__arc-happy  { opacity: 1; }
+.page--break-active .page__mouth-smile { opacity: 0; }
+.page--break-active .page__mouth-open { opacity: 1; }
+.page--break-active .page__butterfly  { opacity: 1; animation: page-bfly-path 7s ease-in-out infinite; }
+.page--break-active .page__bfly-wings { animation: page-bfly-flap .22s ease-in-out infinite; }
+
+/* ── break-done (~1.6 s): ready bounce, bright eyes, sparkle ──────────────── */
+.page--break-done .page__root      { animation: page-ready 1.6s ease-out both; }
+.page--break-done .page__shadow    { animation: page-shadow-ready 1.6s ease-out both; }
+.page--break-done .page__eyes-open { transform: scale(1.1); }
+.page--break-done .page__mouth-smile { opacity: 0; }
+.page--break-done .page__mouth-open { opacity: 1; transform: scale(.85); }
+.page--break-done .page__arm-r     { transform: rotate(-112deg); }
+.page--break-done .page__ribbon    { animation: page-ribbon-wag .8s ease-in-out 2; }
+.page--break-done .page__sparkles  { opacity: 1; }
+.page--break-done .page__spark     { animation: page-burst 900ms ease-out both; }
+.page--break-done .page__spark--2,
+.page--break-done .page__spark--4,
+.page--break-done .page__spark--6  { animation-delay: 300ms; }
+
+/* ── Reduced motion: no looping movement, keep each state's expression ────── */
+@media (prefers-reduced-motion: reduce) {
+  .page *,
+  .page { animation: none !important; transition: opacity 200ms ease !important; }
+
+  .page--break-start .page__sparkles,
+  .page--break-done .page__sparkles,
+  .page--break-start .page__flutter { opacity: 1; }
+  .page--break-active .page__arm-l  { transform: rotate(108deg); }
+  .page--break-active .page__arm-r  { transform: rotate(-108deg); }
+  .page--break-start .page__flutter { opacity: 0; }
+  .page--focus-sleeping .page__z    { opacity: 1; }
+}

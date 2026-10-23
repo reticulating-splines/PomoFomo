@@ -1,0 +1,261 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   Ember the dragon — state styles.
+   character.js puts exactly one state class on the root <svg class="ember">:
+   ember--idle | --focus | --focus-tired | --focus-sleeping |
+   ember--break-start (≈750 ms one-shot) | --break-active | --break-done (≈1.6 s)
+   Pivots use view-box coordinates (the SVG's 200×200 user space).
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.ember { overflow: visible; display: block; }
+
+.ember__root     { transform-box: view-box; transform-origin: 100px 180px; }
+.ember__shadow   { transform-box: view-box; transform-origin: 100px 181px; }
+.ember__head     { transform-box: view-box; transform-origin: 100px 120px; }
+.ember__gaze     { transform-box: view-box; transform-origin: 100px 84px; }
+.ember__eyes-open{ transform-box: view-box; transform-origin: 100px 84px; }
+.ember__tail     { transform-box: view-box; transform-origin: 122px 156px; }
+.ember__wing-l   { transform-box: view-box; transform-origin: 82px 141px; }
+.ember__wing-r   { transform-box: view-box; transform-origin: 118px 141px; }
+.ember__arm-l    { transform-box: view-box; transform-origin: 73px 128px; }
+.ember__arm-r    { transform-box: view-box; transform-origin: 127px 128px; }
+.ember__book     { transform-box: view-box; transform-origin: 100px 152px; }
+.ember__puff     { transform-box: view-box; transform-origin: 127px 107px; }
+.ember__butterfly{ transform-box: view-box; transform-origin: 156px 56px; }
+.ember__spark,
+.ember__z,
+.ember__bfly     { transform-box: fill-box; transform-origin: 50% 50%; }
+
+/* Static pose changes ease between states */
+.ember__arm-l, .ember__arm-r, .ember__book, .ember__gaze,
+.ember__head, .ember__wing-l, .ember__wing-r {
+  transition: transform 450ms cubic-bezier(.34, 1.36, .64, 1);
+}
+
+/* Parts hidden in the default (idle) look */
+.ember__book, .ember__zzz, .ember__sparkles, .ember__butterfly, .ember__puff,
+.ember__lids, .ember__eyes-closed, .ember__eyes-sleep, .ember__eyes-happy,
+.ember__mouth-open {
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.ember__eyes-open, .ember__mouth-smile { transition: opacity 200ms ease; }
+
+/* ── idle ──────────────────────────────────────────────────────────────────── */
+.ember--idle .ember__root      { animation: ember-breathe 3.6s ease-in-out infinite; }
+.ember--idle .ember__eyes-open { animation: ember-blink 5s infinite; }
+.ember--idle .ember__tail      { animation: ember-sway 4.2s ease-in-out infinite; }
+.ember--idle .ember__arm-r     { animation: ember-wave 9s ease-in-out 1.5s infinite; }
+
+/* ── focus: reading, eyes on the book ─────────────────────────────────────── */
+.ember--focus .ember__book,
+.ember--focus-tired .ember__book,
+.ember--focus-sleeping .ember__book { opacity: 1; }
+
+.ember--focus .ember__arm-l { transform: rotate(-27deg); }
+.ember--focus .ember__arm-r { transform: rotate(27deg); }
+.ember--focus .ember__gaze  { transform: translateY(3.5px); }
+.ember--focus .ember__eyes-open { animation: ember-blink 8s 2s infinite; }
+.ember--focus .ember__root  { animation: ember-bob 4s ease-in-out infinite; }
+.ember--focus .ember__head  { animation: ember-nod 8s ease-in-out infinite; }
+.ember--focus .ember__tail  { animation: ember-sway 6s ease-in-out infinite; }
+
+/* ── focus-tired: droopy lids, yawns, book sagging ────────────────────────── */
+.ember--focus-tired .ember__lids  { opacity: 1; }
+.ember--focus-tired .ember__gaze  { transform: translateY(3px); }
+.ember--focus-tired .ember__book  { transform: translateY(5px) rotate(5deg); }
+.ember--focus-tired .ember__arm-l { transform: rotate(-19deg); }
+.ember--focus-tired .ember__arm-r { transform: rotate(23deg); }
+.ember--focus-tired .ember__root  { animation: ember-drowsy 5s ease-in-out infinite; }
+.ember--focus-tired .ember__mouth-open  { animation: ember-yawn 7s ease-in-out 1s infinite; }
+.ember--focus-tired .ember__mouth-smile { animation: ember-yawn-hide 7s ease-in-out 1s infinite; }
+.ember--focus-tired .ember__wing-l { transform: rotate(8deg) scale(.92); }
+.ember--focus-tired .ember__wing-r { transform: rotate(-8deg) scale(.92); }
+
+/* ── focus-sleeping: dozing over the book ─────────────────────────────────── */
+.ember--focus-sleeping .ember__eyes-open   { opacity: 0; }
+.ember--focus-sleeping .ember__eyes-closed,
+.ember--focus-sleeping .ember__eyes-sleep,
+.ember--focus-sleeping .ember__zzz         { opacity: 1; }
+.ember--focus-sleeping .ember__head  { transform: rotate(-7deg); }
+.ember--focus-sleeping .ember__book  { transform: translateY(9px) rotate(9deg); }
+.ember--focus-sleeping .ember__arm-l { transform: rotate(-12deg); }
+.ember--focus-sleeping .ember__arm-r { transform: rotate(16deg); }
+.ember--focus-sleeping .ember__wing-l { transform: rotate(10deg) scale(.88); }
+.ember--focus-sleeping .ember__wing-r { transform: rotate(-10deg) scale(.88); }
+.ember--focus-sleeping .ember__root  { animation: ember-breathe 5s ease-in-out infinite; }
+.ember--focus-sleeping .ember__z     { animation: ember-z 3s ease-out infinite both; }
+.ember--focus-sleeping .ember__z:nth-child(2) { animation-delay: 1s; }
+.ember--focus-sleeping .ember__z:nth-child(3) { animation-delay: 2s; }
+
+/* ── break-start: the big hooray jump (≈750 ms) ───────────────────────────── */
+.ember--break-start .ember__root   { animation: ember-jump 750ms cubic-bezier(.3, .7, .4, 1) both; }
+.ember--break-start .ember__shadow { animation: ember-shadow-jump 750ms cubic-bezier(.3, .7, .4, 1) both; }
+.ember--break-start .ember__wing-l { transform: rotate(-30deg) scale(1.15); transition-duration: 250ms; }
+.ember--break-start .ember__wing-r { transform: rotate(30deg) scale(1.15); transition-duration: 250ms; }
+.ember--break-start .ember__arm-l  { transform: rotate(124deg); transition-duration: 250ms; }
+.ember--break-start .ember__arm-r  { transform: rotate(-124deg); transition-duration: 250ms; }
+.ember--break-start .ember__mouth-open  { opacity: 1; }
+.ember--break-start .ember__mouth-smile { opacity: 0; }
+.ember--break-start .ember__sparkles    { opacity: 1; transition: none; }
+.ember--break-start .ember__spark       { animation: ember-sparkle 650ms ease-out both; }
+.ember--break-start .ember__spark:nth-child(2n) { animation-delay: 60ms; }
+.ember--break-start .ember__spark:nth-child(3n) { animation-delay: 110ms; }
+
+/* ── break-active: stretching, flutter, butterfly friend ──────────────────── */
+.ember--break-active .ember__eyes-open  { opacity: 0; }
+.ember--break-active .ember__eyes-closed,
+.ember--break-active .ember__eyes-happy,
+.ember--break-active .ember__butterfly  { opacity: 1; }
+.ember--break-active .ember__root  { animation: ember-stretch-lean 3.4s ease-in-out infinite; }
+.ember--break-active .ember__arm-l { transform: rotate(118deg); animation: ember-reach-l 3.4s ease-in-out infinite; }
+.ember--break-active .ember__arm-r { transform: rotate(-118deg); animation: ember-reach-r 3.4s ease-in-out infinite; }
+.ember--break-active .ember__wing-l { animation: ember-flutter-l 1.2s ease-in-out infinite alternate; }
+.ember--break-active .ember__wing-r { animation: ember-flutter-r 1.2s ease-in-out infinite alternate; }
+.ember--break-active .ember__tail  { animation: ember-wag 1.4s ease-in-out infinite; }
+.ember--break-active .ember__butterfly { animation: ember-flutter-path 11s ease-in-out infinite; }
+.ember--break-active .ember__bfly  { animation: ember-flap 220ms ease-in-out infinite alternate; }
+
+/* ── break-done: ready-to-go bounce (≈1.6 s) ──────────────────────────────── */
+.ember--break-done .ember__root   { animation: ember-hop 1.6s ease-in-out both; }
+.ember--break-done .ember__shadow { animation: ember-shadow-hop 1.6s ease-in-out both; }
+.ember--break-done .ember__arm-r  { animation: ember-pump 1.6s ease-in-out both; }
+.ember--break-done .ember__sparkles { opacity: 1; transition: none; }
+.ember--break-done .ember__spark  { animation: ember-sparkle 900ms ease-out 200ms both; }
+.ember--break-done .ember__spark:nth-child(2n) { animation-delay: 450ms; }
+.ember--break-done .ember__spark:nth-child(3n) { animation-delay: 700ms; }
+.ember--break-done .ember__puff   { opacity: .8; animation: ember-puff 1.4s ease-out 150ms both; }
+
+/* ── Keyframes ─────────────────────────────────────────────────────────────── */
+@keyframes ember-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50%      { transform: scale(.993, 1.022); }
+}
+@keyframes ember-blink {
+  0%, 94%, 100% { transform: scaleY(1); }
+  96%           { transform: scaleY(.08); }
+  98%           { transform: scaleY(1); }
+}
+@keyframes ember-sway {
+  0%, 100% { transform: rotate(-4deg); }
+  50%      { transform: rotate(6deg); }
+}
+@keyframes ember-wave {
+  0%, 74%, 100% { transform: rotate(0); }
+  79%      { transform: rotate(-122deg); }
+  83%      { transform: rotate(-100deg); }
+  87%      { transform: rotate(-122deg); }
+  91%      { transform: rotate(-100deg); }
+  96%      { transform: rotate(0); }
+}
+@keyframes ember-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(1.6px); }
+}
+@keyframes ember-nod {
+  0%, 100% { transform: rotate(0); }
+  30%      { transform: rotate(2deg); }
+  70%      { transform: rotate(-1deg); }
+}
+@keyframes ember-drowsy {
+  0%, 100% { transform: rotate(-2.2deg); }
+  50%      { transform: rotate(2.2deg) translateY(1px); }
+}
+@keyframes ember-yawn {
+  0%, 55%, 85%, 100% { opacity: 0; transform: scale(1); }
+  62%, 78%           { opacity: 1; }
+}
+@keyframes ember-yawn-hide {
+  0%, 55%, 85%, 100% { opacity: 1; }
+  60%, 80%           { opacity: 0; }
+}
+@keyframes ember-z {
+  0%   { opacity: 0; transform: translate(-6px, 8px) scale(.5); }
+  25%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(5px, -8px) scale(1.1); }
+}
+@keyframes ember-puff {
+  0%   { opacity: 0; transform: translate(0, 0) scale(.4); }
+  25%  { opacity: .85; }
+  100% { opacity: 0; transform: translate(10px, -5px) scale(1.25); }
+}
+@keyframes ember-jump {
+  0%   { transform: translateY(0) scale(1, 1); }
+  14%  { transform: translateY(0) scale(1.08, .9); }
+  45%  { transform: translateY(-24px) scale(.95, 1.07); }
+  76%  { transform: translateY(0) scale(1.07, .93); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes ember-shadow-jump {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  45%      { transform: scale(.7); opacity: .6; }
+}
+@keyframes ember-sparkle {
+  0%   { opacity: 0; transform: scale(0) rotate(0); }
+  35%  { opacity: 1; transform: scale(1.25) rotate(25deg); }
+  100% { opacity: 0; transform: scale(.7) rotate(60deg); }
+}
+@keyframes ember-stretch-lean {
+  0%, 100% { transform: rotate(-3deg) translateY(0); }
+  25%      { transform: rotate(0) translateY(-3px); }
+  50%      { transform: rotate(3deg) translateY(0); }
+  75%      { transform: rotate(0) translateY(-3px); }
+}
+@keyframes ember-reach-l {
+  0%, 100% { transform: rotate(128deg); }
+  50%      { transform: rotate(106deg); }
+}
+@keyframes ember-reach-r {
+  0%, 100% { transform: rotate(-106deg); }
+  50%      { transform: rotate(-128deg); }
+}
+@keyframes ember-flutter-l {
+  from { transform: rotate(-6deg); }
+  to   { transform: rotate(-22deg) scale(1.05); }
+}
+@keyframes ember-flutter-r {
+  from { transform: rotate(6deg); }
+  to   { transform: rotate(22deg) scale(1.05); }
+}
+@keyframes ember-wag {
+  0%, 100% { transform: rotate(-8deg); }
+  50%      { transform: rotate(10deg); }
+}
+@keyframes ember-flutter-path {
+  0%   { transform: translate(0, 0) rotate(0); }
+  18%  { transform: translate(-18px, -30px) rotate(-10deg); }
+  38%  { transform: translate(-66px, -40px) rotate(-4deg); }
+  55%  { transform: translate(-116px, -18px) rotate(8deg); }
+  70%  { transform: translate(-112px, 18px) rotate(14deg); }
+  86%  { transform: translate(-46px, -10px) rotate(-6deg); }
+  100% { transform: translate(0, 0) rotate(0); }
+}
+@keyframes ember-flap {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(.3); }
+}
+@keyframes ember-hop {
+  0%, 100%  { transform: translateY(0) scale(1, 1); }
+  10%, 50%  { transform: translateY(0) scale(1.06, .93); }
+  28%       { transform: translateY(-14px) scale(.97, 1.04); }
+  68%       { transform: translateY(-10px) scale(.98, 1.03); }
+  86%       { transform: translateY(0) scale(1.04, .96); }
+}
+@keyframes ember-shadow-hop {
+  0%, 100%  { transform: scale(1); }
+  28%       { transform: scale(.78); }
+  68%       { transform: scale(.84); }
+}
+@keyframes ember-pump {
+  0%, 100% { transform: rotate(0); }
+  22%      { transform: rotate(-128deg); }
+  40%      { transform: rotate(-108deg); }
+  58%      { transform: rotate(-128deg); }
+  80%      { transform: rotate(-110deg); }
+}
+
+/* ── Reduced motion: hold each state's expression, drop the looping motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .ember, .ember * { animation: none !important; transition: none !important; }
+  .ember--focus-tired .ember__mouth-open,
+  .ember__puff { opacity: 0 !important; }
+}
