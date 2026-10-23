@@ -281,7 +281,7 @@ function renderHoard() {
 
 function renderShelf() {
   const shelf = state.shelf ?? [];
-  el.shelfTitle.textContent = settings.kidName ? `${settings.kidName}’s bookcase` : 'Your bookcase';
+  el.shelfTitle.textContent = settings.userName ? `${settings.userName}’s bookcase` : 'Your bookcase';
 
   const counts = shelfCounts(shelf);
   const parts = Object.keys(REWARDS)
@@ -389,7 +389,7 @@ function caption() {
 }
 
 function bubbleText(left) {
-  const name = settings.kidName ? `, ${settings.kidName}` : '';
+  const name = settings.userName ? `, ${settings.userName}` : '';
   const voice = VOICES[settings.timerCharacter] ?? {};
   if (celebrating) return voice.welcome ?? `Back${name}. Next round’s started.`;
   if (state.isPaused) return 'Paused for now.';

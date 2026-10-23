@@ -27,7 +27,7 @@ const el = {
   btnSkip: $('btnSkip'), skipLabel: $('skipLabel'), btnStop: $('btnStop'), btnOpen: $('btnOpen'),
   weekBars: $('weekBars'), statRounds: $('statRounds'), statMinutes: $('statMinutes'),
   statBreaks: $('statBreaks'), statRewardIcon: $('statRewardIcon'), weekShelf: $('weekShelf'),
-  cycleHint: $('cycleHint'), kidName: $('kidName'), buddyOtho: $('buddyOtho'), mark: document.querySelector('.bar__mark'),
+  cycleHint: $('cycleHint'), userName: $('userName'), buddyOtho: $('buddyOtho'), mark: document.querySelector('.bar__mark'),
 };
 const steppers = [...document.querySelectorAll('.stepper')];
 const switches = [...document.querySelectorAll('.switch input')];
@@ -183,7 +183,7 @@ function populateSettings() {
   for (const s of steppers) renderStepper(s, settings[s.dataset.key]);
   for (const input of switches) input.checked = Boolean(settings[input.dataset.key]);
   for (const input of buddyInputs) input.checked = input.value === characterInfoKey(settings.timerCharacter);
-  if (document.activeElement !== el.kidName) el.kidName.value = settings.kidName ?? '';
+  if (document.activeElement !== el.userName) el.userName.value = settings.userName ?? '';
 
   const n = settings.sessionsBeforeLongBreak;
   el.cycleHint.textContent =
@@ -235,9 +235,9 @@ function characterInfoKey(key) {
 
 // Saved as they type (debounced): the popup can close before a change event
 let nameTimer = null;
-el.kidName.addEventListener('input', () => {
+el.userName.addEventListener('input', () => {
   clearTimeout(nameTimer);
-  nameTimer = setTimeout(() => save({ kidName: el.kidName.value.trim().slice(0, 20) }), 350);
+  nameTimer = setTimeout(() => save({ userName: el.userName.value.trim().slice(0, 20) }), 350);
 });
 
 // Easter egg for grown-ups: click the logo five times to let Otho in

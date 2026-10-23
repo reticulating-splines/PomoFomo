@@ -91,7 +91,7 @@ PomoFomo/
   (crown) items, each with its own toast.
 
 ### Little touches
-- Optional kid’s name (popup) used in greetings, toasts and the bookcase title;
+- Optional name (popup) used in greetings and the bookcase title;
   time-of-day greeting at idle.
 - Each buddy has a signature break idea offered on alternate breaks.
 - Easter egg: typing `spoons` on the timer tab (or clicking the popup logo five
@@ -122,7 +122,7 @@ PomoFomo/
   focusMinutes: 20, shortBreakMinutes: 5, longBreakMinutes: 15,
   sessionsBeforeLongBreak: 3, soundEnabled: true, persistOnRelaunch: false,
   nagDuringBreak: false, timerCharacter: 'dragon' | 'book' | 'wizard' | 'otho',
-  kidName: ''
+  userName: ''
 }
 ```
 

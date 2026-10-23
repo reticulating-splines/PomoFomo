@@ -83,7 +83,7 @@ export const DEFAULT_SETTINGS = {
   persistOnRelaunch:       false,
   nagDuringBreak:          false,    // timer tab re-grabs focus during breaks
   timerCharacter:          'dragon', // a key of CHARACTERS
-  kidName:                 '',       // optional: the buddy uses it in speech
+  userName:                '',       // optional: the buddy uses it in speech
 };
 
 // ── Default runtime state (chrome.storage.local) ─────────────────────────────

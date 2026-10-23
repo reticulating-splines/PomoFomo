@@ -1,16 +1,22 @@
 /* ═════════════════════════════════════════════════════════════════════════════
-   PomoFomo — Popup (toolbar remote for grown-ups)
-   Fixed 340px wide. Two views slide horizontally; the status card is tinted
-   by the current phase.
+   PomoFomo — Popup (toolbar remote)
+   A fixed 340×580 window. Two views are stacked in the same box and slide
+   horizontally; each scrolls on its own, so Chrome never sees content wider
+   or taller than the window. The status card is tinted by the phase.
    ═════════════════════════════════════════════════════════════════════════════ */
+
+html { width: 340px; overflow: clip; }
 
 body {
   --accent: var(--brand);
   --accent-deep: var(--brand-deep);
   --tint: var(--brand-tint);
   width: 340px;
+  height: 580px;
+  display: flex;
+  flex-direction: column;
   background: #FBF8F4;
-  overflow: hidden;
+  overflow: clip;
 }
 body[data-status="focus"]         { --accent: var(--focus); --accent-deep: var(--focus-deep); --tint: var(--focus-tint); }
 body[data-status="focus-warning"] { --accent: var(--warn);  --accent-deep: var(--warn-deep);  --tint: var(--warn-tint); }
@@ -62,23 +68,31 @@ body[data-view="settings"] .icon--settings { display: none; }
 /* ── Views ────────────────────────────────────────────────────────────────── */
 
 .views {
-  display: flex;
-  width: 680px;
-  transition: transform 340ms var(--ease-out);
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: clip;
 }
-body[data-view="settings"] .views { transform: translateX(-340px); }
 
 .view {
-  width: 340px;
-  flex: none;
+  position: absolute;
+  inset: 0;
   padding: 2px 14px 16px;
-  max-height: 546px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   scrollbar-width: thin;
-  transition: opacity 240ms ease;
+  scrollbar-gutter: stable;
+  transition: transform 340ms var(--ease-out), opacity 240ms ease, visibility 0s;
 }
+.view--settings { transform: translateX(100%); }
+body[data-view="settings"] .view--settings { transform: none; }
+body[data-view="settings"] .view--status { transform: translateX(-30%); }
 body[data-view="settings"] .view--status,
-body[data-view="status"] .view--settings { opacity: 0; visibility: hidden; transition: opacity 240ms ease, visibility 0s 340ms; }
+body[data-view="status"] .view--settings {
+  opacity: 0;
+  visibility: hidden;
+  transition: transform 340ms var(--ease-out), opacity 240ms ease, visibility 0s 340ms;
+}
 
 /* ── Now card ─────────────────────────────────────────────────────────────── */
 
@@ -326,7 +340,7 @@ body[data-status="idle"] .now__bar { display: none; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 10px 8px 12px;
+  padding: 8px 6px 10px;
   border-radius: var(--radius-m);
   background: white;
   box-shadow: var(--shadow-s), inset 0 0 0 2px transparent;
@@ -345,19 +359,10 @@ body[data-status="idle"] .now__bar { display: none; }
   background: var(--brand) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m6 12.5 4 4 8-9" fill="none" stroke="white" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>') center / 14px no-repeat;
 }
 .buddy:has(input:focus-visible) { outline: 3px solid color-mix(in srgb, var(--brand) 60%, white); outline-offset: 2px; }
-.buddy__art { width: 76px; height: 76px; }
-.buddy__credit {
-  margin-top: 4px;
-  padding: 2px 8px;
-  border-radius: 99px;
-  font-size: 0.68rem;
-  font-weight: 800;
-  color: #B8325F;
-  background: #FFE6EF;
-}
+.buddy__art { width: 58px; height: 58px; }
 .buddy__art > svg { width: 100%; height: 100%; overflow: visible; }
-.buddy__name { margin-top: 2px; font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; }
-.buddy__kind { font-size: 0.78rem; font-weight: 700; color: var(--ink-faint); }
+.buddy__name { margin-top: 4px; font-family: var(--font-display); font-weight: 600; font-size: 1rem; }
+.buddy__kind { font-size: 0.74rem; font-weight: 700; color: var(--ink-faint); }
 
 .switch {
   display: flex;
