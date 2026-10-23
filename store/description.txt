@@ -1,0 +1,42 @@
+PomoFomo is a break timer for kids. It runs focus rounds and breaks (the Pomodoro technique), but its real job is getting kids off the screen when break time comes, and keeping them off until it's over.
+
+HOW IT WORKS
+
+PomoFomo keeps a pinned timer tab open while you work. A timer buddy sits in a watercolour landscape that changes with each part of the round:
+
+• Focus: the buddy settles in and the ring counts down.
+• Two minutes left: a quiet heads-up and a notification, so there's time to find a good place to stop. Save the game, finish the sentence. One "5 more minutes" per round.
+• Break: the timer tab comes to the front with an idea for something to do away from the screen. Stretch, get water, look out a window, go outside.
+• Back to it: the next round starts on its own.
+
+After a few rounds comes a long break.
+
+THE BOOKCASE
+
+Stay off the screen for the whole break and something goes on your bookcase. It never empties, adds a shelf when one fills up, and picks up a few surprises along the way. Switch to another tab mid-break and you'll get one reminder, and no book that time.
+
+TIMER BUDDIES
+
+• Ember, a dragon who reads
+• Page, a book in reading glasses
+• Yumyumnia, an elf wizard who collects fireballs
+• One more, if you know where to look
+
+FOR PARENTS
+
+• Focus, break and long-break lengths are set from the toolbar button.
+• Pause, skip and stop live in the toolbar popup, not on the timer tab.
+• The toolbar badge shows the minutes left.
+• A weekly view of rounds, focus time and full breaks.
+• Optional: bring the timer tab back every 30 seconds during breaks.
+• Optional: resume the timer after Chrome restarts.
+
+PRIVACY
+
+No ads, no accounts, no analytics, no network requests. Everything is stored by Chrome on your computer. If Chrome sync is on, your settings sync to your other computers through your Google account, like any extension's settings.
+
+Permissions:
+• Storage: settings, the timer and the bookcase
+• Alarms: keeps the timer on time when its tab is in the background
+• Tabs: keeps the timer tab pinned, brings it forward at break time, and checks whether a tab opened during a break is the timer tab (nothing about other tabs is read or stored)
+• Notifications: the heads-up before a break, the break alert, and the mid-break reminder
