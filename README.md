@@ -2,6 +2,8 @@
 
 A break timer for kids, as a Chrome extension. It runs focus rounds and breaks (the Pomodoro technique), but its real job is getting kids off the screen when break time comes, and keeping them off until it's over.
 
+**[Install PomoFomo from the Chrome Web Store](https://chromewebstore.google.com/detail/bckikfgjoglmobfdobabgbfidbdfhddm)**
+
 ![Focus time with Ember the dragon](store/screenshot-1-focus.png)
 
 ## How it works
